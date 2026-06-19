@@ -6,8 +6,10 @@ import os
 import time
 import pandas as pd
 import io
+import urllib.parse
 from datetime import datetime
 from openpyxl.styles import Alignment
+import streamlit.components.v1 as components
 
 # --- 세션 상태 초기화 ---
 if "api_key" not in st.session_state:
@@ -130,6 +132,14 @@ else:
 
                         [JSON 출력 양식]
                         {
+                          "basic_info": {
+                            "building_name": "[건축물명]",
+                            "inspection_company": "[성능점검업체명]",
+                            "company_representative": "[업체 대표자명]",
+                            "building_address": "[건축물 주소 (전체 주소)]",
+                            "management_entity": "[관리주체(건물주) 이름]",
+                            "management_address": "[관리주체 주소 (전체 주소)]"
+                          },
                           "items": [
                             {
                               "page_number": "[페이지 번호 (예: 12p)]",
@@ -144,6 +154,7 @@ else:
                           ]
                         }
 
+                        basic_info의 모든 필드는 보고서 표지 또는 본문에서 반드시 찾아 기재하세요. 확인 불가 시 "확인 불가"로 기재하세요.
                         순수 JSON 형식으로만 응답하세요.
                         """
 
@@ -240,8 +251,8 @@ else:
         adequate_indices = [i for i, item in enumerate(items) if item.get("ai_judgment") == "적정"]
         inadequate_indices = [i for i, item in enumerate(items) if item.get("ai_judgment") != "적정"]
 
-        tab1, tab2 = st.tabs(
-            [f"🟢 적정 항목 ({len(adequate_indices)}건)", f"🔴 보완필요 항목 ({len(inadequate_indices)}건)"]
+        tab0, tab1, tab2 = st.tabs(
+            ["📋 기본정보", f"🟢 적정 항목 ({len(adequate_indices)}건)", f"🔴 보완필요 항목 ({len(inadequate_indices)}건)"]
         )
 
         def display_item(item_idx, item_data):
@@ -285,6 +296,40 @@ else:
             st.markdown(
                 "<hr style='margin-top: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True
             )
+
+        def render_map(address: str):
+            if not address or address == "확인 불가":
+                st.caption("주소 정보가 없어 지도를 표시할 수 없습니다.")
+                return
+            encoded = urllib.parse.quote(address)
+            map_html = (
+                f'<iframe width="100%" height="280" frameborder="0" style="border:0; border-radius:8px;" '
+                f'src="https://maps.google.com/maps?q={encoded}&output=embed" allowfullscreen></iframe>'
+            )
+            components.html(map_html, height=290)
+            st.link_button("🗺️ Google Maps에서 열기", f"https://maps.google.com/maps?q={encoded}")
+
+        with tab0:
+            basic = data.get("basic_info", {})
+
+            st.markdown("### 🏢 건축물 정보")
+            col_l, col_r = st.columns(2)
+            with col_l:
+                st.markdown(f"**건축물명:** {basic.get('building_name', '확인 불가')}")
+                st.markdown(f"**주소:** {basic.get('building_address', '확인 불가')}")
+            with col_r:
+                st.markdown(f"**성능점검업체명:** {basic.get('inspection_company', '확인 불가')}")
+                st.markdown(f"**업체 대표자명:** {basic.get('company_representative', '확인 불가')}")
+            render_map(basic.get("building_address", ""))
+
+            st.markdown("---")
+            st.markdown("### 👤 관리주체 정보")
+            col_l2, col_r2 = st.columns(2)
+            with col_l2:
+                st.markdown(f"**관리주체(건물주):** {basic.get('management_entity', '확인 불가')}")
+            with col_r2:
+                st.markdown(f"**주소:** {basic.get('management_address', '확인 불가')}")
+            render_map(basic.get("management_address", ""))
 
         with tab1:
             if not adequate_indices:
