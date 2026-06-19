@@ -11,6 +11,52 @@ from datetime import datetime
 from openpyxl.styles import Alignment
 import streamlit.components.v1 as components
 
+
+def _parse_json_with_repair(text: str) -> dict:
+    """JSON 파싱 시도 후 실패하면 잘린 응답을 복구하여 재시도합니다."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # 마지막으로 완전히 닫힌 items 항목을 찾아 JSON을 재조립합니다.
+        search_key = '"expert_detailed_opinion"'
+        pos = 0
+        last_item_end = None
+
+        while True:
+            found = text.find(search_key, pos)
+            if found == -1:
+                break
+            colon = text.find(":", found + len(search_key))
+            if colon == -1:
+                break
+            q_start = text.find('"', colon + 1)
+            if q_start == -1:
+                break
+            i = q_start + 1
+            while i < len(text):
+                if text[i] == "\\":
+                    i += 2
+                elif text[i] == '"':
+                    break
+                else:
+                    i += 1
+            close = text.find("}", i)
+            if close == -1:
+                break
+            last_item_end = close
+            pos = close + 1
+
+        if last_item_end is None:
+            raise ValueError(
+                "AI 응답이 너무 길어 JSON을 복구할 수 없습니다. "
+                "더 적은 페이지로 나눠 업로드해 보세요."
+            )
+
+        truncated = text[: last_item_end + 1].rstrip().rstrip(",")
+        repaired = truncated + "\n  ]\n}"
+        return json.loads(repaired)
+
+
 # --- 세션 상태 초기화 ---
 if "api_key" not in st.session_state:
     try:
@@ -113,7 +159,11 @@ else:
                     f"'{selected_model}' 모델이 문서 내의 **모든 항목**을 하나도 빠짐없이 추출 중입니다..."
                 ):
                     try:
-                        model = genai.GenerativeModel(selected_model)
+                        max_tokens = 65536 if "2.5" in selected_model else 8192
+                        model = genai.GenerativeModel(
+                            selected_model,
+                            generation_config=genai.GenerationConfig(max_output_tokens=max_tokens),
+                        )
 
                         system_prompt = """
                         당신은 기계설비 성능점검 보고서 검토 전문가입니다.
@@ -183,7 +233,7 @@ else:
                                 os.remove(temp_pdf_path)
 
                         raw_text = response.text.replace("```json", "").replace("```", "").strip()
-                        new_data = json.loads(raw_text)
+                        new_data = _parse_json_with_repair(raw_text)
 
                         file_name = (
                             pdfs[0].name if pdfs else (imgs[0].name if imgs else "보고서")
