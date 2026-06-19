@@ -6,10 +6,9 @@ import os
 import time
 import pandas as pd
 
-# 1. [수정] 세션 상태 및 외부 클라우드 비밀 금고 자동 로드 로직 추가
+# 1. 세션 상태 및 외부 클라우드 비밀 금고 자동 로드 로직 추가
 if "api_key" not in st.session_state:
     try:
-        # 외부 클라우드 금고에 열쇠가 있다면 자동으로 가져옵니다.
         st.session_state.api_key = st.secrets["GEMINI_API_KEY"]
     except KeyError:
         st.session_state.api_key = ""
@@ -18,13 +17,10 @@ if "report_data" not in st.session_state: st.session_state.report_data = None
 
 st.set_page_config(page_title="기계설비 성능점검 검토자문 시스템", page_icon="📝", layout="wide")
 
-# 🔍 [추가] 클라우드 금고가 제대로 작동하는지 확인하는 엑스레이 디버깅 코드
-st.write("클라우드 금고에 들어있는 열쇠 목록:", st.secrets.keys())
-
 with st.sidebar:
     st.header("⚙️ 설정 및 파일 업로드")
     
-    # 2. [수정] 키가 이미 로드된 경우 성공 메시지를 보여주고, 없는 경우에만 입력창을 띄웁니다.
+    # 2. 키가 이미 로드된 경우 성공 메시지를 보여주고, 없는 경우에만 입력창을 띄웁니다.
     if st.session_state.api_key:
         st.success("🔐 API 키가 클라우드에서 안전하게 자동 연결되었습니다.")
         genai.configure(api_key=st.session_state.api_key)
