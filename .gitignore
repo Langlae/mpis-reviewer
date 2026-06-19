@@ -1,0 +1,5 @@
+secrets.toml
+temp_report.pdf
+__pycache__/
+*.pyc
+.env
