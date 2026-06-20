@@ -3,3 +3,10 @@ temp_report.pdf
 __pycache__/
 *.pyc
 .env
+
+# Office 임시 잠금 파일
+~$*
+
+# 발표자료 파일 (대용량 바이너리)
+*.pptx
+*.ppt
