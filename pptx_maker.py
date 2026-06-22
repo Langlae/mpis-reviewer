@@ -6,6 +6,7 @@ import io
 import os
 import uuid
 import zipfile
+import requests
 from datetime import datetime
 from lxml import etree
 
@@ -27,6 +28,36 @@ C_BLACK  = RGBColor(0x1A, 0x1A, 0x2E)
 
 FONT_NAME = "Pretendard"
 FONT_DIR  = os.path.join(os.path.dirname(__file__), "fonts", "pretendard")
+
+_PRETENDARD_ZIP = (
+    "https://github.com/orioncactus/pretendard/releases/download/"
+    "v1.3.9/Pretendard-1.3.9.zip"
+)
+_FONT_FILES = {
+    "public/static/alternative/Pretendard-Regular.ttf":  "Pretendard-Regular.ttf",
+    "public/static/alternative/Pretendard-Bold.ttf":     "Pretendard-Bold.ttf",
+    "public/static/alternative/Pretendard-SemiBold.ttf": "Pretendard-SemiBold.ttf",
+    "public/static/alternative/Pretendard-Light.ttf":    "Pretendard-Light.ttf",
+}
+
+
+def _ensure_fonts() -> bool:
+    """폰트 파일이 없으면 GitHub 릴리즈에서 자동 다운로드. 성공 여부 반환."""
+    required = [os.path.join(FONT_DIR, n) for n in ("Pretendard-Regular.ttf", "Pretendard-Bold.ttf")]
+    if all(os.path.exists(p) for p in required):
+        return True
+    try:
+        os.makedirs(FONT_DIR, exist_ok=True)
+        resp = requests.get(_PRETENDARD_ZIP, timeout=30)
+        resp.raise_for_status()
+        zf = zipfile.ZipFile(io.BytesIO(resp.content))
+        for src, dst_name in _FONT_FILES.items():
+            dst = os.path.join(FONT_DIR, dst_name)
+            with open(dst, "wb") as f:
+                f.write(zf.read(src))
+        return True
+    except Exception:
+        return False
 
 # ── 슬라이드 치수 (16:9 와이드) ───────────────────────────────
 W = Inches(13.33)
@@ -466,6 +497,8 @@ def create_review_pptx(data: dict) -> bytes:
     data: {"basic_info": {...}, "items": [...]}
     반환: PPTX 파일 바이트 (Pretendard 폰트 내장)
     """
+    _ensure_fonts()
+
     prs = Presentation()
     prs.slide_width  = W
     prs.slide_height = H
