@@ -186,6 +186,9 @@
   body.editing.tool-text .slide.active{cursor:crosshair}
   body.editing.tool-image .slide.active{cursor:crosshair}
 
+  /* 선택 도구일 때 텍스트박스 내부도 이동 커서 */
+  body.editing.tool-select .free-text .free-inner{cursor:move}
+
   /* 배치 중 요소 시각 힌트 */
   .free-el.placing{opacity:.75;outline:2px dashed var(--green);outline-offset:1px}
 
@@ -375,7 +378,7 @@
     <button id="editToggle" title="편집 모드 켜기/끄기">편집</button>
     <button id="saveHtml" title="현재 상태를 HTML로 저장">저장(HTML)</button>
   </div>
-  <div class="edit-flag">편집 중 — 텍스트 클릭 수정 · 도구로 새 요소 추가</div>
+  <div class="edit-flag">편집 중 — 더블클릭으로 텍스트 수정 · 드래그로 이동 · 도구로 새 요소 추가</div>
 </div>
 
 <script>
@@ -613,6 +616,24 @@
     el.addEventListener('pointermove', onElPointerMove);
     el.addEventListener('pointerup',   onElPointerUp);
     el.addEventListener('click',       e => e.stopPropagation());
+    /* 더블클릭 → 텍스트 편집 모드 진입 */
+    el.addEventListener('dblclick', e => {
+      if (!body.classList.contains('editing')) return;
+      if (!el.classList.contains('free-text')) return;
+      const inner = el.querySelector('.free-inner');
+      if (!inner) return;
+      e.stopPropagation(); e.preventDefault();
+      inner.focus();
+      /* 클릭 위치에 커서 배치 */
+      if (document.caretRangeFromPoint){
+        const r = document.caretRangeFromPoint(e.clientX, e.clientY);
+        if (r){ const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+      } else if (document.caretPositionFromPoint){
+        const p = document.caretPositionFromPoint(e.clientX, e.clientY);
+        if (p){ const r = document.createRange(); r.setStart(p.offsetNode, p.offset); r.collapse(true);
+                const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+      }
+    });
   }
 
   function onElPointerDown(e){
@@ -635,8 +656,24 @@
 
     selectEl(el);
 
-    /* 텍스트박스 내부 클릭 → 텍스트 편집, 드래그 없음 */
-    if (el.classList.contains('free-text') && e.target.classList.contains('free-inner')) return;
+    /* 텍스트박스 내부 클릭 */
+    if (el.classList.contains('free-text') && e.target.classList.contains('free-inner')){
+      const inner = el.querySelector('.free-inner');
+      /* 선택 도구이고 텍스트 편집 중이 아닐 때 → 드래그로 이동
+         (더블클릭으로 텍스트 편집 진입, 편집 중엔 클릭이 커서 이동으로 동작) */
+      if (activeTool === 'select' && inner !== document.activeElement){
+        e.preventDefault(); e.stopPropagation();
+        dragState = {
+          el,
+          startX: e.clientX, startY: e.clientY,
+          origLeft: parseFloat(el.style.left)||0,
+          origTop:  parseFloat(el.style.top) ||0,
+          moved: false,
+        };
+        el.setPointerCapture(e.pointerId);
+      }
+      return;
+    }
 
     e.preventDefault(); e.stopPropagation();
     dragState = {
