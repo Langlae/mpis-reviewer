@@ -111,6 +111,7 @@
        backdrop-filter:blur(4px);transition:background .15s}
   .tool-bar button:hover{background:rgba(21,64,99,.9)}
   .tool-bar button.on{background:var(--green);color:#0b2a12}
+  .tool-bar button:disabled{opacity:.3;cursor:default;pointer-events:none}
   .tool-bar .sep{width:1px;height:20px;background:rgba(255,255,255,.2);margin:0 2px}
 
   /* ---- 서식 바 (자유 요소 선택 시에만 표시) ---- */
@@ -188,6 +189,18 @@
 
   /* 선택 도구일 때 텍스트박스 내부도 이동 커서 */
   body.editing.tool-select .free-text .free-inner{cursor:move}
+
+  /* 선택 도구일 때 기본 슬라이드 요소도 이동 커서 */
+  body.editing.tool-select [contenteditable]:not(.free-inner){cursor:move}
+  body.editing.tool-select [contenteditable]:not(.free-inner):focus{cursor:text}
+
+  /* 편집 중에는 숨겨진 fragment도 반투명으로 표시 */
+  body.editing .free-el.fragment:not(.visible){opacity:.45!important;transform:none!important}
+  body.editing .free-el.fragment:not(.visible)::after{
+    content:"▶ 단계 " attr(data-fragment-order-label);
+    position:absolute;top:-20px;left:0;font-size:11px;font-weight:800;
+    color:var(--green);white-space:nowrap;pointer-events:none;
+  }
 
   /* 배치 중 요소 시각 힌트 */
   .free-el.placing{opacity:.75;outline:2px dashed var(--green);outline-offset:1px}
@@ -334,6 +347,9 @@
 
   <!-- 도구 모음 (편집 시) -->
   <div class="tool-bar" id="toolBar">
+    <button id="toolUndo" title="되돌리기 (Ctrl+Z)" disabled>↩ 되돌리기</button>
+    <button id="toolRedo" title="다시실행 (Ctrl+Shift+Z)" disabled>↪ 다시실행</button>
+    <div class="sep"></div>
     <button id="toolSelect" class="on" title="선택·이동 (V)">▶ 선택</button>
     <button id="toolText" title="텍스트박스 추가 (T)">T 텍스트</button>
     <button id="toolImage" title="이미지 추가 (I)">🖼 이미지</button>
@@ -362,6 +378,10 @@
     <button id="fmtAlignL" title="왼쪽">⡇L</button>
     <button id="fmtAlignC" title="가운데">⡇C</button>
     <button id="fmtAlignR" title="오른쪽">R⡇</button>
+    <div class="sep"></div>
+    <button id="fmtFragment" title="클릭 시 순서대로 나타나게 설정">▶ 순서표시</button>
+    <label id="fmtFragLabel" style="display:none">단계</label>
+    <input id="fmtFragNum" type="number" min="1" max="50" value="1" title="몇 번째에 나타날지" style="display:none;width:44px">
     <div class="sep"></div>
     <button id="fmtDelete" class="del" title="삭제 (Del)">✕ 삭제</button>
   </div>
@@ -429,9 +449,22 @@
   }
 
   /* ── 4) 프래그먼트 ── */
+  /* data-fragment-order(0-indexed) × 1000 → 비교값
+     없으면 DOM순 × 1000 + 500 (user order 0,1,2…가 그 사이에 끼어들 수 있도록) */
+  function fragOrder(el, allFrags){
+    const v = el.dataset.fragmentOrder;
+    return (v !== undefined) ? parseFloat(v) * 1000
+                              : allFrags.indexOf(el) * 1000 + 500;
+  }
+
   function next(){
-    const h = slides[i].querySelector('.fragment:not(.visible)');
-    if (h){ h.classList.add('visible'); return; }
+    const allF  = [...slides[i].querySelectorAll('.fragment')];
+    const unvis = allF.filter(f => !f.classList.contains('visible'));
+    if (unvis.length){
+      unvis.sort((a,b) => fragOrder(a,allF) - fragOrder(b,allF));
+      unvis[0].classList.add('visible');
+      return;
+    }
     go(i + 1, false);
   }
   function prev(){ go(i - 1, true); }
@@ -474,12 +507,13 @@
   /* ════════════════════════════════════════════════════
      자유 요소 시스템 (텍스트박스 · 이미지)
      ════════════════════════════════════════════════════ */
-  let activeTool    = 'select';
-  let selectedEl    = null;
-  let pendingImgPos = null;   // { x, y, slide }
-  let dragState     = null;   // 기존 요소 드래그
-  let resizeState   = null;   // 리사이즈
-  let placingState  = null;   // 신규 요소 배치 드래그
+  let activeTool      = 'select';
+  let selectedEl      = null;
+  let pendingImgPos   = null;   // { x, y, slide }
+  let dragState       = null;   // 자유 요소 드래그
+  let resizeState     = null;   // 리사이즈
+  let placingState    = null;   // 신규 요소 배치 드래그
+  let nativeDragState = null;   // 기본 슬라이드 요소 드래그
   const DIRS = ['nw','n','ne','e','se','s','sw','w'];
 
   function clientToSlide(cx, cy){
@@ -518,6 +552,7 @@
     selectedEl.remove();
     selectedEl = null;
     document.getElementById('fmtBar').style.display = 'none';
+    saveSnapshot();
   }
 
   /* 서식 바 갱신 */
@@ -542,6 +577,17 @@
         document.getElementById('fmtAlign'+a).classList.toggle('on',
           (a==='L'&&(ta==='left'||ta==='start')) || (a==='C'&&ta==='center') || (a==='R'&&ta==='right'));
       });
+    }
+    /* 순서표시 상태 갱신 */
+    const isFrag = el.classList.contains('fragment');
+    document.getElementById('fmtFragment').classList.toggle('on', isFrag);
+    document.getElementById('fmtFragLabel').style.display = isFrag ? '' : 'none';
+    document.getElementById('fmtFragNum').style.display   = isFrag ? '' : 'none';
+    if (isFrag){
+      const step = el.dataset.fragmentOrder !== undefined
+        ? parseInt(el.dataset.fragmentOrder) + 1
+        : [...el.closest('.slide').querySelectorAll('.fragment')].length;
+      document.getElementById('fmtFragNum').value = step;
     }
   }
 
@@ -570,6 +616,7 @@
     inner.style.cssText = 'font-size:20px;color:#111;font-family:Pretendard,sans-serif;font-weight:400;text-align:left;';
     if (body.classList.contains('editing')) inner.contentEditable = 'true';
     el.appendChild(inner);
+    attachInputSnap(inner);
 
     addHandles(el);
     setupElEvents(el);
@@ -605,6 +652,7 @@
     setupElEvents(el);
     slideEl.appendChild(el);
     selectEl(el);
+    saveSnapshot();
     return el;
   }
 
@@ -720,8 +768,88 @@
   }
 
   function onElPointerUp(e){
+    const didDrag   = dragState?.moved;
+    const didResize = !!resizeState;
     resizeState = null;
     dragState   = null;
+    if (didDrag || didResize) saveSnapshot();
+  }
+
+  /* ════════════════════════════════════════════════════
+     기본 슬라이드 요소 드래그 이동
+     (h1·h2·p·li 등 — 첫 드래그 시 position:absolute 로 전환)
+     ════════════════════════════════════════════════════ */
+  function onNativeElPointerDown(e){
+    if (!body.classList.contains('editing')) return;
+    if (activeTool !== 'select') return;
+    const el = e.currentTarget;
+    if (el === document.activeElement) return; // 텍스트 편집 중이면 패스
+
+    e.preventDefault(); e.stopPropagation();
+    const sc = getScale();
+    let startX, startY, needsConvert;
+    if (el.style.position === 'absolute'){
+      startX = parseFloat(el.style.left) || 0;
+      startY = parseFloat(el.style.top)  || 0;
+      needsConvert = false;
+    } else {
+      const sr = slides[i].getBoundingClientRect();
+      const er = el.getBoundingClientRect();
+      startX = (er.left - sr.left) / sc;
+      startY = (er.top  - sr.top)  / sc;
+      el._nativeW = er.width / sc;
+      needsConvert = true;
+    }
+    nativeDragState = { el, startClientX: e.clientX, startClientY: e.clientY,
+                        startX, startY, needsConvert, moved: false };
+    el.setPointerCapture(e.pointerId);
+  }
+
+  function onNativeElPointerMove(e){
+    if (!nativeDragState || nativeDragState.el !== e.currentTarget) return;
+    const { el } = nativeDragState;
+    const sc = getScale();
+    const dx = (e.clientX - nativeDragState.startClientX) / sc;
+    const dy = (e.clientY - nativeDragState.startClientY) / sc;
+    if (!nativeDragState.moved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)){
+      nativeDragState.moved = true;
+      if (nativeDragState.needsConvert){
+        el.style.position = 'absolute';
+        el.style.width    = Math.round(el._nativeW) + 'px';
+        el.style.zIndex   = '3';
+        el.style.margin   = '0';
+      }
+    }
+    if (nativeDragState.moved){
+      el.style.left = Math.round(nativeDragState.startX + dx) + 'px';
+      el.style.top  = Math.round(nativeDragState.startY + dy) + 'px';
+    }
+  }
+
+  function onNativeElPointerUp(e){
+    const moved = nativeDragState?.moved;
+    nativeDragState = null;
+    if (moved) saveSnapshot();
+  }
+
+  function onNativeElDblClick(e){
+    if (!body.classList.contains('editing')) return;
+    const el = e.currentTarget;
+    e.stopPropagation(); e.preventDefault();
+    el.focus();
+    if (document.caretRangeFromPoint){
+      const r = document.caretRangeFromPoint(e.clientX, e.clientY);
+      if (r){ const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+    }
+  }
+
+  function attachNativeDrag(el){
+    if (el.dataset.nativeDragAttached) return;
+    el.dataset.nativeDragAttached = '1';
+    el.addEventListener('pointerdown', onNativeElPointerDown);
+    el.addEventListener('pointermove', onNativeElPointerMove);
+    el.addEventListener('pointerup',   onNativeElPointerUp);
+    el.addEventListener('dblclick',    onNativeElDblClick);
   }
 
   /* ════════════════════════════════════════════════════
@@ -797,6 +925,7 @@
         sel.addRange(range);
       }
     }
+    saveSnapshot();
   }
 
   /* 슬라이드 이벤트 등록 */
@@ -874,17 +1003,132 @@
   });
   document.getElementById('fmtDelete').addEventListener('click', deleteSelected);
 
-  /* Delete 키 → 선택 요소 삭제 */
+  /* ── 순서표시 (fragment) 토글 ── */
+  function syncFragLabel(el){
+    if (!el || !el.classList.contains('fragment')) return;
+    const allF = [...el.closest('.slide').querySelectorAll('.fragment')];
+    const step = parseInt(el.dataset.fragmentOrder) + 1;
+    el.dataset.fragmentOrderLabel = step + '/' + allF.length + '단계';
+  }
+
+  document.getElementById('fmtFragment').addEventListener('click', function(){
+    if (!selectedEl) return;
+    const isFrag = selectedEl.classList.contains('fragment');
+    if (!isFrag){
+      selectedEl.classList.add('fragment');
+      selectedEl.classList.remove('visible');
+      const allF = [...selectedEl.closest('.slide').querySelectorAll('.fragment')];
+      const order = allF.length - 1;  // 마지막 단계 (0-indexed)
+      selectedEl.dataset.fragmentOrder = order;
+      document.getElementById('fmtFragNum').value = order + 1;
+      document.getElementById('fmtFragLabel').style.display = '';
+      document.getElementById('fmtFragNum').style.display   = '';
+      syncFragLabel(selectedEl);
+    } else {
+      selectedEl.classList.remove('fragment', 'visible');
+      delete selectedEl.dataset.fragmentOrder;
+      delete selectedEl.dataset.fragmentOrderLabel;
+      document.getElementById('fmtFragLabel').style.display = 'none';
+      document.getElementById('fmtFragNum').style.display   = 'none';
+    }
+    this.classList.toggle('on', selectedEl.classList.contains('fragment'));
+    saveSnapshot();
+  });
+
+  document.getElementById('fmtFragNum').addEventListener('change', function(){
+    if (!selectedEl || !selectedEl.classList.contains('fragment')) return;
+    const step = Math.max(1, parseInt(this.value) || 1);
+    selectedEl.dataset.fragmentOrder = step - 1;
+    this.value = step;
+    syncFragLabel(selectedEl);
+    saveSnapshot();
+  });
+  document.getElementById('fmtFragNum').addEventListener('input', function(){
+    if (!selectedEl || !selectedEl.classList.contains('fragment')) return;
+    const step = Math.max(1, parseInt(this.value) || 1);
+    selectedEl.dataset.fragmentOrder = step - 1;
+    syncFragLabel(selectedEl);
+  });
+
+  /* Delete 키 → 선택 요소 삭제 / Ctrl+Z·Ctrl+Shift+Z → undo/redo */
   addEventListener('keydown', e => {
     if (!body.classList.contains('editing')) return;
-    if (e.key === 'Delete' && selectedEl && document.activeElement !== selectedEl.querySelector('.free-inner')){
-      deleteSelected();
+    const inText = document.activeElement?.isContentEditable;
+    /* Ctrl+Z / Ctrl+Shift+Z — 텍스트 편집 중엔 브라우저 기본 동작 유지 */
+    if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z'){
+      if (!inText){
+        e.preventDefault();
+        e.shiftKey ? redo() : undo();
+      }
+      return;
     }
+    if (e.key === 'Delete' && selectedEl && !inText){ deleteSelected(); }
     if (e.key === 'Escape'){ deselectEl(); setActiveTool('select'); }
-    if (e.key === 'v' || e.key === 'V') setActiveTool('select');
-    if (e.key === 't' || e.key === 'T') setActiveTool('text');
-    if (e.key === 'i' || e.key === 'I') setActiveTool('image');
+    if (!inText && (e.key === 'v' || e.key === 'V')) setActiveTool('select');
+    if (!inText && (e.key === 't' || e.key === 'T')) setActiveTool('text');
+    if (!inText && (e.key === 'i' || e.key === 'I')) setActiveTool('image');
   });
+
+  /* ════════════════════════════════════════════════════
+     UNDO / REDO  (Ctrl+Z / Ctrl+Shift+Z)
+     ════════════════════════════════════════════════════ */
+  const MAX_HIST = 50;
+  const histStack = [];
+  let   histIdx   = -1;
+  let   snapTimer = null;
+  const snapSet   = new WeakSet(); // input 리스너 중복 방지
+
+  function saveSnapshot(){
+    clearTimeout(snapTimer); snapTimer = null;
+    if (histIdx < histStack.length - 1) histStack.splice(histIdx + 1);
+    const snap = deck.innerHTML;
+    if (histStack[histIdx] === snap) return;
+    histStack.push(snap);
+    if (histStack.length > MAX_HIST) histStack.shift(); else histIdx++;
+    refreshUndoBtns();
+  }
+
+  function scheduleSnap(ms){ clearTimeout(snapTimer); snapTimer = setTimeout(saveSnapshot, ms); }
+
+  function applySnapshot(snap){
+    deselectEl();
+    deck.innerHTML = snap;
+    slides.length = 0;
+    deck.querySelectorAll('.slide').forEach(s => slides.push(s));
+    slides.forEach((s, k) => s.classList.toggle('active', k === i));
+    if (body.classList.contains('editing')){
+      const EDSEL = 'h1,h2,h3,p,li,.eyebrow,.tag,.lead,.stat,small';
+      deck.querySelectorAll(EDSEL).forEach(el => {
+        if (!el.closest('.free-el')){
+          el.setAttribute('contenteditable','true');
+          attachNativeDrag(el); attachInputSnap(el);
+        }
+      });
+      refreshFreeEls();
+      deck.querySelectorAll('.free-inner').forEach(attachInputSnap);
+    }
+    syncHud();
+    refreshUndoBtns();
+  }
+
+  function attachInputSnap(el){
+    if (snapSet.has(el)) return;
+    snapSet.add(el);
+    el.addEventListener('input', () => scheduleSnap(700));
+  }
+
+  function refreshUndoBtns(){
+    const u = document.getElementById('toolUndo');
+    const r = document.getElementById('toolRedo');
+    if (u) u.disabled = (histIdx <= 0);
+    if (r) r.disabled = (histIdx >= histStack.length - 1);
+  }
+
+  function undo(){ if (histIdx > 0){ histIdx--; applySnapshot(histStack[histIdx]); } }
+  function redo(){ if (histIdx < histStack.length - 1){ histIdx++; applySnapshot(histStack[histIdx]); } }
+
+  document.getElementById('toolUndo').onclick = undo;
+  document.getElementById('toolRedo').onclick = redo;
 
   /* ════════════════════════════════════════════════════
      편집 모드
@@ -903,6 +1147,14 @@
     if (on){
       setActiveTool('select');
       refreshFreeEls();
+      /* 기본 슬라이드 요소에도 드래그·입력 핸들러 부착 */
+      deck.querySelectorAll(EDITABLE).forEach(el => {
+        if (!el.closest('.free-el')){ attachNativeDrag(el); attachInputSnap(el); }
+      });
+      deck.querySelectorAll('.free-inner').forEach(attachInputSnap);
+      /* 편집 시작 시 초기 스냅샷 저장 */
+      histStack.length = 0; histIdx = -1;
+      saveSnapshot();
     } else {
       deselectEl();
       setActiveTool('select');
@@ -935,6 +1187,10 @@
       el.classList.remove('selected','placing');
       el.removeAttribute('data-events-attached');
     });
+    clone.querySelectorAll('[data-native-drag-attached]').forEach(el =>
+      el.removeAttribute('data-native-drag-attached'));
+    clone.querySelectorAll('[data-snap-attached]').forEach(el =>
+      el.removeAttribute('data-snap-attached'));
     const fb = clone.querySelector('#fmtBar');
     if (fb) fb.style.display = 'none';
     const tb = clone.querySelector('#toolBar');
