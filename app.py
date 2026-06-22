@@ -10,6 +10,7 @@ import urllib.parse
 from datetime import datetime
 from openpyxl.styles import Alignment
 import streamlit.components.v1 as components
+from pptx_maker import create_review_pptx
 
 
 def _parse_json_with_repair(text: str) -> dict:
@@ -177,8 +178,36 @@ else:
                         1. 페이지 번호: 해당 항목이 보고서의 몇 페이지에 있는지 파악하세요. (모르면 '확인 불가')
                         2. 업체 점검결과 추출: 보고서에 점검업체가 표기한 '점검결과'([적합], [조치필요], [부적합], [해당없음] 등)를 그대로 추출하세요.
                         3. 사진 속 수치 판독: 첨부된 계측기 사진 등에서 측정된 수치를 정확하게 읽으세요.
-                        4. 검토자문의견 작성: 사진에서 확인된 수치와 '점검 기준'을 비교하여, 업체의 '점검결과'가 적정하게 작성되었는지 서술하세요.
-                           - 사진 수치가 안 보이면 "판독 불가"로 기재하고 보완필요 판정을 내리세요.
+                        4. 검토자문의견 작성 (아래 [검토자문의견 작성 원칙]을 반드시 따르세요)
+
+                        [🔴 검토자문의견 작성 원칙 - 핵심 품질 기준 🔴]
+                        검토자문의견(expert_detailed_opinion)은 반드시 다음 원칙에 따라 **정량적·기술적**으로 작성하세요.
+                        절대로 "양호", "적합", "이상없음" 등의 정성적 표현만으로 작성하지 마세요.
+
+                        ▶ 원칙 1: 설계값 대비 측정값 비율을 반드시 계산하여 명시
+                          - 보고서에 설계값(명판, 계산서, 사양서 등)이 기재된 경우, 측정값이 설계값의 몇 %인지 계산하세요.
+                          - 작성 예시: "유량 측정값이 341.74m³/h로 설계유량 370m³/h의 92.4%이며, 점검기준(±10% 이내)을 충족하므로 적합함."
+                          - 설계값이 보고서에 없으면 "설계값 미기재로 정량 비교 불가 — 보완 필요"라고 명시하세요.
+
+                        ▶ 원칙 2: 단위 환산이 필요한 경우 직접 계산하여 서술
+                          - 점검기준이 '풍량(CMH)' 기준인데 사진에 '풍속(m/s)'만 있는 경우:
+                            풍량(CMH) = 풍속(m/s) × 덕트단면적(m²) × 3600 으로 환산하세요.
+                            덕트 사이즈가 보고서에 있으면 직접 계산하고, 없으면 "풍속만 기재되어 있고 덕트 사이즈 미확인으로 풍량 환산 불가 — 보완 필요"라고 서술하세요.
+                          - 브라인 온도, 전력, 압력 등 다른 단위도 동일하게 적용하세요.
+
+                        ▶ 원칙 3: 운전 조건(정격/일반) 명시 및 비교 기준 확인
+                          - 점검기준이 '정격운전 기준'인 경우, 측정이 정격운전 상태에서 이루어졌는지 확인하세요.
+                          - 정격운전 상태가 아닌 일반운전 상태에서 측정한 값을 정격값과 비교한 경우: "정격운전 조건이 아닌 일반운전(인버터 42Hz) 상태에서 측정한 값을 정격값(60Hz)과 비교하여 기준 적용이 부적절함 — 보완 필요"라고 명시하세요.
+                          - 인버터 운전 시에는 인버터 출력 주파수 대비 측정값 비율로 비교 가능함을 안내하세요.
+
+                        ▶ 원칙 4: 점검결과 판단 근거를 구체적으로 서술
+                          - 단순히 "사유: 양호" 또는 "적합" 한 단어로 끝나는 경우 → 반드시 "보완필요" 판정
+                          - 반드시 "무엇을 측정했고(측정값), 설계값/기준값은 얼마이며, 그 비율은 얼마이고, 따라서 기준을 충족/불충족한다"는 논리 구조로 서술하세요.
+                          - 사진 수치가 판독 불가인 경우: "측정 사진의 수치 판독 불가 — 보완 필요"로 기재하고 보완필요 판정을 내리세요.
+
+                        ▶ 원칙 5: 보완이 필요한 경우 구체적인 개선 방향 제시
+                          - 단순히 "보완필요"가 아니라, 무엇을 어떻게 보완해야 하는지 기술적으로 서술하세요.
+                          - 예: "설계유량 대비 측정유량 비율(%)을 계산하여 기재하고, 기준 충족 여부를 정량적으로 서술할 것."
 
                         [JSON 출력 양식]
                         {
@@ -196,10 +225,10 @@ else:
                               "item_name": "[점검 항목명]",
                               "criteria": "[점검 기준]",
                               "reported_result": "[점검업체의 점검결과 (예: 적합)]",
-                              "photo_value": "[사진에서 인식된 측정값]",
+                              "photo_value": "[사진에서 인식된 측정값 (단위 포함)]",
                               "report_value": "[보고서 텍스트 기재 내용]",
                               "ai_judgment": "[적정 또는 보완필요 (둘 중 하나만 기재)]",
-                              "expert_detailed_opinion": "[검토자문의견: 점검결과가 적정한지/보완이 필요한지 사진 수치를 근거로 상세 서술]"
+                              "expert_detailed_opinion": "[검토자문의견: 측정값·설계값·비율 계산을 포함한 정량적·기술적 서술. 보완필요 시 구체적 개선방향 제시]"
                             }
                           ]
                         }
@@ -289,12 +318,26 @@ else:
             buffer.seek(0)
 
             file_stem = record["name"].rsplit(".", 1)[0]
-            st.download_button(
-                label="📥 한눈에 보기 (엑셀 파일로 다운로드)",
-                data=buffer,
-                file_name=f"{file_stem}_검토자문의견.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
+
+            dl_col1, dl_col2 = st.columns(2)
+            with dl_col1:
+                st.download_button(
+                    label="📥 엑셀 다운로드",
+                    data=buffer,
+                    file_name=f"{file_stem}_검토자문의견.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True,
+                )
+            with dl_col2:
+                with st.spinner("PPT 생성 중..."):
+                    pptx_bytes = create_review_pptx(data)
+                st.download_button(
+                    label="📊 PPT 다운로드 (Pretendard)",
+                    data=pptx_bytes,
+                    file_name=f"{file_stem}_검토자문의견.pptx",
+                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    use_container_width=True,
+                )
 
         st.markdown("---")
 
