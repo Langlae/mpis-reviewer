@@ -367,23 +367,56 @@ else:
                     f"🔴 **[{item_data.get('ai_judgment')}] 검토자문의견:**\n\n{item_data.get('expert_detailed_opinion')}"
                 )
 
-            with st.expander("💬 자문의견 수정 지시하기"):
-                feedback = st.text_input(
-                    "수정 지시사항을 입력하세요:", key=f"fb_{idx}_{item_idx}"
+            with st.expander("💬 검토의견 재작성 요청 (AI가 직접 판단)"):
+                feedback = st.text_area(
+                    "검토 방향을 입력하세요 (AI가 항목 데이터를 직접 재분석하여 의견을 새로 작성합니다):",
+                    key=f"fb_{idx}_{item_idx}",
+                    height=80,
+                    placeholder="예) 측정값이 기준 내에 있으므로 적정으로 재검토해주세요 / 풍량 환산 계산을 포함하여 다시 작성해주세요",
                 )
-                if st.button("AI 의견 수정 적용", key=f"btn_{idx}_{item_idx}"):
+                if st.button("🔄 AI 검토의견 재작성", key=f"btn_{idx}_{item_idx}"):
                     if feedback and selected_model:
-                        with st.spinner("수정 중..."):
+                        with st.spinner("AI가 항목을 재분석하여 의견을 새로 작성 중..."):
                             edit_model = genai.GenerativeModel(selected_model)
-                            edit_prompt = (
-                                f"기존 의견: {item_data.get('expert_detailed_opinion')}\n"
-                                f"지시사항: {feedback}\n"
-                                "지시를 반영해 기존 의견을 고쳐서 한 문장으로 답변해."
-                            )
+                            edit_prompt = f"""당신은 기계설비 성능점검 보고서 검토 전문가입니다.
+아래 점검 항목의 데이터를 직접 재분석하여 전문적인 검토자문의견을 새로 작성하고, 적정/보완필요 판정을 내려주세요.
+사용자의 지시 방향을 참고하되, 의견 내용은 당신이 전문가로서 직접 판단하여 작성하세요.
+
+[점검 항목 데이터]
+- 점검 기준: {item_data.get('criteria', '')}
+- 업체 점검결과: {item_data.get('reported_result', '')}
+- 사진 판독값: {item_data.get('photo_value', '')}
+- 보고서 기재값: {item_data.get('report_value', '')}
+- 기존 AI 검토의견: {item_data.get('expert_detailed_opinion', '')}
+
+[검토자 지시 방향]
+{feedback}
+
+[작성 원칙]
+- 설계값 대비 측정값 비율(%)을 계산하여 정량적으로 서술
+- 단순 "양호", "적합" 같은 정성적 표현만으로 끝내지 말 것
+- 보완필요 시 구체적 개선 방향 제시
+
+순수 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
+{{"ai_judgment": "적정 또는 보완필요 중 하나만", "expert_detailed_opinion": "재작성한 검토자문의견"}}"""
+
                             edit_response = edit_model.generate_content(edit_prompt)
-                            st.session_state.history[idx]["data"]["items"][item_idx][
-                                "expert_detailed_opinion"
-                            ] = edit_response.text.strip()
+                            raw = edit_response.text.replace("```json", "").replace("```", "").strip()
+                            try:
+                                result = json.loads(raw)
+                                new_judgment = result.get("ai_judgment", item_data.get("ai_judgment"))
+                                new_opinion  = result.get("expert_detailed_opinion", raw)
+                                # 판정값 정규화
+                                if "적정" in new_judgment and "보완" not in new_judgment:
+                                    new_judgment = "적정"
+                                else:
+                                    new_judgment = "보완필요"
+                            except Exception:
+                                new_judgment = item_data.get("ai_judgment")
+                                new_opinion  = raw
+
+                            st.session_state.history[idx]["data"]["items"][item_idx]["ai_judgment"] = new_judgment
+                            st.session_state.history[idx]["data"]["items"][item_idx]["expert_detailed_opinion"] = new_opinion
                             st.rerun()
 
             st.markdown(
