@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 기반 기계설비 성능점검 결과보고서 자동검토 시스템 개발</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Malgun Gothic','Apple SD Gothic Neo','Nanum Gothic',sans-serif;
+  font-size:9.5pt;
+  line-height:1.65;
+  color:#1a1a1a;
+  background:#e8e8e8;
+}
+.page{
+  width:210mm;
+  min-height:297mm;
+  margin:20px auto;
+  background:#fff;
+  padding:18mm 16mm 20mm 16mm;
+  box-shadow:0 2px 20px rgba(0,0,0,.18);
+}
+
+/* ── 제목부 ── */
+.paper-title{
+  text-align:center;
+  font-size:15.5pt;
+  font-weight:bold;
+  line-height:1.45;
+  margin-bottom:5px;
+  letter-spacing:-0.3px;
+}
+.paper-title-en{
+  text-align:center;
+  font-size:10.5pt;
+  font-weight:bold;
+  line-height:1.4;
+  margin-bottom:10px;
+}
+.authors{
+  text-align:center;
+  font-size:10pt;
+  margin-bottom:3px;
+}
+.affiliations{
+  text-align:center;
+  font-size:8.5pt;
+  color:#555;
+  margin-bottom:14px;
+  line-height:1.5;
+}
+.affil-dagger{font-size:8pt;color:#333}
+
+/* ── 초록 ── */
+.abstract-box{
+  border:1.5px solid #1B3A6B;
+  padding:9px 12px;
+  margin-bottom:14px;
+  font-size:8.8pt;
+  line-height:1.6;
+}
+.abstract-box strong{font-size:9pt;color:#1B3A6B}
+.keywords{margin-top:5px;font-size:8.5pt}
+
+/* ── 2단 본문 ── */
+.body-columns{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0 14px;
+  column-gap:14px;
+}
+.col{}
+
+/* ── 제목 ── */
+h2{
+  font-size:10.5pt;
+  font-weight:bold;
+  border-bottom:1.5px solid #1B3A6B;
+  padding-bottom:2px;
+  margin:12px 0 6px 0;
+  color:#1B3A6B;
+}
+h3{
+  font-size:9.5pt;
+  font-weight:bold;
+  margin:9px 0 4px 0;
+  color:#1B3A6B;
+}
+
+/* ── 본문 ── */
+p{
+  margin-bottom:5px;
+  text-align:justify;
+  font-size:9.3pt;
+}
+
+/* ── 그림 ── */
+.figure{margin:9px 0}
+.fig-ph{
+  border:1.8px dashed #aaa;
+  background:#f7f8f9;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#aaa;
+  font-size:8.5pt;
+  text-align:center;
+  padding:6px;
+}
+.fig-cap{
+  text-align:center;
+  font-size:8.3pt;
+  margin-top:3px;
+  color:#444;
+}
+
+/* ── 표 ── */
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:8.3pt;
+  margin:7px 0 2px;
+}
+th{
+  background:#1B3A6B;
+  color:#fff;
+  padding:4px 5px;
+  text-align:center;
+  font-weight:bold;
+  border:1px solid #1B3A6B;
+}
+td{
+  border:1px solid #ccc;
+  padding:3.5px 5px;
+  vertical-align:top;
+  line-height:1.5;
+}
+tr:nth-child(even) td{background:#f8f9fa}
+.tbl-cap{text-align:center;font-size:8.3pt;color:#444;margin-bottom:6px}
+
+/* ── 참고문헌 ── */
+.full-width{grid-column:1/-1}
+.refs{
+  border-top:1.5px solid #1B3A6B;
+  padding-top:8px;
+  margin-top:14px;
+  font-size:8.8pt;
+  line-height:1.6;
+}
+.refs strong{font-size:9pt;color:#1B3A6B;display:block;margin-bottom:4px}
+.refs p{margin-bottom:2px;text-indent:-1.5em;padding-left:1.5em}
+
+@media print{
+  body{background:#fff}
+  .page{margin:0;box-shadow:none;padding:15mm 14mm 18mm 14mm}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ══════════════ 제목부 ══════════════ -->
+<div class="paper-title">AI 기반 기계설비 성능점검 결과보고서 자동검토 시스템 개발</div>
+<div class="paper-title-en">Development of an AI-Based Automatic Review System for Mechanical Equipment Performance Inspection Reports</div>
+
+<div class="authors">
+  <strong>[제1저자명]</strong>(First Name)<sup>1</sup>,&nbsp;
+  <strong>[공동저자명]</strong>(Second Name)<sup>1</sup>,&nbsp;
+  <strong>[교신저자명]</strong>(Corresponding Author)<sup>2†</sup>
+</div>
+<div class="affiliations">
+  <sup>1</sup>대한기계설비산업연구원 선임연구원 &nbsp;·&nbsp; <sup>2</sup>대한기계설비산업연구원 연구위원<br>
+  <sup>1</sup>Senior Research Associate, Korea Research Institute of Mechanical Facilities Industry, Seoul, 06068, Korea<br>
+  <sup>2</sup>Associate Research Fellow, Korea Research Institute of Mechanical Facilities Industry, Seoul, 06068, Korea<br>
+  <span class="affil-dagger">† Corresponding author, E-mail: [교신저자 이메일]</span>
+</div>
+
+<!-- ══════════════ 초록 ══════════════ -->
+<div class="abstract-box">
+  <strong>Abstract</strong>&nbsp; Since August 2021, the mechanical equipment performance inspection system under the Mechanical Equipment Act has mandated annual inspections for buildings exceeding a certain scale. However, significant quality disparities exist among inspection reports produced by different contractors, and the expert review advisory committee faces growing workloads from manual review processes. To address these issues, this study developed an AI-based automatic review system utilizing Google Gemini multimodal large language model (LLM). The system simultaneously processes PDF inspection reports and on-site measurement photographs, automatically extracts all inspection items, performs cross-verification between recorded and photographed values, and generates quantitative expert review opinions based on five core review principles. A JSON repair algorithm ensures 100% item extraction even when AI responses are truncated by token limits. The system reduces review time from hours to minutes while ensuring consistent, quantitative review opinions, thereby supporting the preliminary review work of the expert advisory committee.
+  <div class="keywords">
+    <strong>Key words</strong>&nbsp; 기계설비 성능점검(Mechanical Equipment Performance Inspection), 대형 언어모델(Large Language Model), 멀티모달 AI(Multimodal AI), 자동검토(Automatic Review), 정량적 검토의견(Quantitative Review Opinion)
+  </div>
+</div>
+
+<!-- ══════════════ 본문 2단 ══════════════ -->
+<div class="body-columns">
+
+<!-- ■■■ 왼쪽 컬럼 ■■■ -->
+<div class="col">
+
+<h2>1. 서론</h2>
+<p>「기계설비법」 제17조에 따른 기계설비 성능점검 제도는 「기계설비 유지관리기준」(국토교통부고시 제2021-1013호)의 시행과 함께 2021년 8월부터 본격적으로 시행되었다. 일정 규모 이상 건축물의 관리주체는 기계설비법 및 유지관리기준에 의거하여 매년 1회 이상 성능점검을 실시하여야 하며, 연면적 규모별로 적용 대상이 순차적으로 확대되면서 연간 제출되는 성능점검 결과보고서의 수는 지속적으로 증가하고 있다.</p>
+<p>그러나 성능점검업체별로 작성되는 결과보고서의 품질 수준은 상당한 편차를 보이고 있다. 이는 검토 대행 업체 간 기술역량 차이, 점검항목에 대한 해석의 상이함, 보고서 서식 및 내용 구성의 비표준화 등에 기인한다. 또한 전문 검토자문위원단에 의한 검토 체계가 운영되고 있으나<sup>[7]</sup>, 수십 개에서 수백 개에 이르는 점검항목을 수작업으로 검토하는 과정에서는 일관성 확보와 검토 품질 유지에 한계가 있다. 특히, 계측 사진과 보고서 기재값의 교차검증 역시 검토자의 주의력에 의존하는 구조적 취약점이 존재한다.</p>
+<p>이에 본 연구에서는 Google Gemini 멀티모달 대형 언어모델(LLM)을 활용하여 성능점검 결과보고서를 자동으로 분석하고, 점검항목별 정량적 검토의견을 생성하는 AI 기반 자동검토 시스템을 개발하였다. 본 시스템은 전문 검토자문위원단의 사전 검토 지원 도구로서, 검토 효율을 획기적으로 향상시키고 검토의견의 정량성과 일관성을 확보하는 것을 목적으로 한다.</p>
+
+<h2>2. AI 기반 자동검토 시스템 개발</h2>
+
+<h3>2.1 시스템 설계</h3>
+<p>본 시스템은 성능점검 결과보고서(PDF)와 현장 계측 사진(JPEG, PNG)을 입력으로 받아, 멀티모달 AI 엔진이 점검항목을 추출·분석하고 전문가 수준의 검토의견을 자동 생성하는 구조로 설계되었다. Fig. 1은 전체 시스템 아키텍처를 나타낸다.</p>
+<p>멀티모달 AI 엔진으로는 Google Gemini를 채택하였다. Gemini는 PDF 문서와 이미지를 동시에 처리할 수 있는 멀티모달 능력을 갖추고 있어, 보고서 본문의 기재값과 계측 사진에 표시된 실제 측정값을 상호 교차검증하는 데 적합하다. 시스템의 주요 처리 단계는 ① 문서 업로드 및 AI 분석, ② 교차검증, ③ 검토의견 생성, ④ 결과물 출력의 4단계로 구성된다.</p>
+
+<!-- Fig. 1 SVG 아키텍처 다이어그램 -->
+<div class="figure">
+<svg viewBox="0 0 530 295" width="100%" style="font-family:'Malgun Gothic',sans-serif;display:block;">
+  <!-- 입력 박스 -->
+  <rect x="4" y="8" width="118" height="278" fill="#EBF5FB" stroke="#2D9CDB" stroke-width="1.5" rx="5"/>
+  <rect x="4" y="8" width="118" height="28" fill="#2D9CDB" rx="5"/>
+  <rect x="4" y="28" width="118" height="8" fill="#2D9CDB"/>
+  <text x="63" y="26" fill="white" text-anchor="middle" font-weight="bold" font-size="11">입  력</text>
+  <text x="63" y="62" fill="#1B3A6B" text-anchor="middle" font-size="9" font-weight="bold">📄 성능점검 결과보고서</text>
+  <text x="63" y="76" fill="#555" text-anchor="middle" font-size="8.5">(PDF 형식)</text>
+  <line x1="16" y1="103" x2="110" y2="103" stroke="#ccc" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="63" y="128" fill="#1B3A6B" text-anchor="middle" font-size="9" font-weight="bold">📷 현장 계측 사진</text>
+  <text x="63" y="142" fill="#555" text-anchor="middle" font-size="8.5">(JPEG / PNG)</text>
+  <text x="63" y="185" fill="#888" text-anchor="middle" font-size="8">멀티모달 동시</text>
+  <text x="63" y="197" fill="#888" text-anchor="middle" font-size="8">처리 가능</text>
+
+  <!-- 화살표1 -->
+  <path d="M126 155 L156 155" stroke="#1B3A6B" stroke-width="2" fill="none"/>
+  <polygon points="153,150 163,155 153,160" fill="#1B3A6B"/>
+
+  <!-- AI 엔진 박스 -->
+  <rect x="164" y="8" width="170" height="278" fill="#F5F6F7" stroke="#1B3A6B" stroke-width="1.5" rx="5"/>
+  <rect x="164" y="8" width="170" height="28" fill="#1B3A6B" rx="5"/>
+  <rect x="164" y="28" width="170" height="8" fill="#1B3A6B"/>
+  <text x="249" y="26" fill="white" text-anchor="middle" font-weight="bold" font-size="11">AI 분석 엔진</text>
+  <text x="249" y="55" fill="#2D9CDB" text-anchor="middle" font-size="9" font-weight="bold">Google Gemini (멀티모달 LLM)</text>
+
+  <!-- 단계 박스들 -->
+  <rect x="172" y="66" width="154" height="44" fill="white" stroke="#2D9CDB" stroke-width="1" rx="3"/>
+  <rect x="172" y="66" width="24" height="44" fill="#2D9CDB" rx="3"/>
+  <text x="184" y="92" fill="white" text-anchor="middle" font-weight="bold" font-size="13">①</text>
+  <text x="265" y="85" fill="#1B3A6B" text-anchor="middle" font-size="9" font-weight="bold">항목 전수 추출</text>
+  <text x="265" y="100" fill="#666" text-anchor="middle" font-size="8">100% 추출 보장</text>
+
+  <rect x="172" y="118" width="154" height="44" fill="white" stroke="#27AE60" stroke-width="1" rx="3"/>
+  <rect x="172" y="118" width="24" height="44" fill="#27AE60" rx="3"/>
+  <text x="184" y="144" fill="white" text-anchor="middle" font-weight="bold" font-size="13">②</text>
+  <text x="265" y="137" fill="#1B3A6B" text-anchor="middle" font-size="9" font-weight="bold">교차검증</text>
+  <text x="265" y="152" fill="#666" text-anchor="middle" font-size="8">사진 수치 vs 기재값</text>
+
+  <rect x="172" y="170" width="154" height="44" fill="white" stroke="#F2994A" stroke-width="1" rx="3"/>
+  <rect x="172" y="170" width="24" height="44" fill="#F2994A" rx="3"/>
+  <text x="184" y="196" fill="white" text-anchor="middle" font-weight="bold" font-size="13">③</text>
+  <text x="265" y="189" fill="#1B3A6B" text-anchor="middle" font-size="9" font-weight="bold">검토의견 생성</text>
+  <text x="265" y="204" fill="#666" text-anchor="middle" font-size="8">5대 원칙 적용</text>
+
+  <rect x="172" y="222" width="154" height="44" fill="white" stroke="#8E44AD" stroke-width="1" rx="3"/>
+  <rect x="172" y="222" width="24" height="44" fill="#8E44AD" rx="3"/>
+  <text x="184" y="248" fill="white" text-anchor="middle" font-weight="bold" font-size="13">④</text>
+  <text x="265" y="241" fill="#1B3A6B" text-anchor="middle" font-size="9" font-weight="bold">결과 구조화</text>
+  <text x="265" y="256" fill="#666" text-anchor="middle" font-size="8">JSON 복원 알고리즘</text>
+
+  <!-- 화살표2 -->
+  <path d="M337 155 L367 155" stroke="#1B3A6B" stroke-width="2" fill="none"/>
+  <polygon points="364,150 374,155 364,160" fill="#1B3A6B"/>
+
+  <!-- 출력 박스 -->
+  <rect x="375" y="8" width="152" height="278" fill="#E9F7EF" stroke="#27AE60" stroke-width="1.5" rx="5"/>
+  <rect x="375" y="8" width="152" height="28" fill="#27AE60" rx="5"/>
+  <rect x="375" y="28" width="152" height="8" fill="#27AE60"/>
+  <text x="451" y="26" fill="white" text-anchor="middle" font-weight="bold" font-size="11">출  력</text>
+
+  <rect x="383" y="45" width="136" height="70" fill="white" stroke="#27AE60" stroke-width="1" rx="3"/>
+  <text x="451" y="63" fill="#27AE60" text-anchor="middle" font-size="9" font-weight="bold">화면 표시</text>
+  <text x="451" y="78" fill="#555" text-anchor="middle" font-size="8">• 기본정보 탭</text>
+  <text x="451" y="91" fill="#555" text-anchor="middle" font-size="8">• 적정 항목 탭</text>
+  <text x="451" y="104" fill="#555" text-anchor="middle" font-size="8">• 보완필요 항목 탭</text>
+
+  <rect x="383" y="125" width="136" height="68" fill="white" stroke="#27AE60" stroke-width="1" rx="3"/>
+  <text x="451" y="143" fill="#27AE60" text-anchor="middle" font-size="9" font-weight="bold">Excel 출력</text>
+  <text x="451" y="157" fill="#555" text-anchor="middle" font-size="8">• 항목별 검토의견</text>
+  <text x="451" y="170" fill="#555" text-anchor="middle" font-size="8">• 설계값/측정값/비율</text>
+  <text x="451" y="183" fill="#555" text-anchor="middle" font-size="8">• 적정/보완필요 구분</text>
+
+  <rect x="383" y="203" width="136" height="68" fill="white" stroke="#27AE60" stroke-width="1" rx="3"/>
+  <text x="451" y="221" fill="#27AE60" text-anchor="middle" font-size="9" font-weight="bold">PPTX 출력</text>
+  <text x="451" y="235" fill="#555" text-anchor="middle" font-size="8">• 검토자문 보고서</text>
+  <text x="451" y="248" fill="#555" text-anchor="middle" font-size="8">• 요약 통계 슬라이드</text>
+  <text x="451" y="261" fill="#555" text-anchor="middle" font-size="8">• 항목별 상세 슬라이드</text>
+</svg>
+<div class="fig-cap">Fig. 1&nbsp; AI 기반 자동검토 시스템 아키텍처</div>
+</div>
+
+</div><!-- /left col -->
+
+<!-- ■■■ 오른쪽 컬럼 ■■■ -->
+<div class="col">
+
+<h3>2.2 AI 검토 원칙 설계</h3>
+<p>본 시스템의 핵심은 AI가 전문가 수준의 정량적 검토의견을 생성하도록 설계된 5대 검토 원칙이다. 기존 LLM 기반 문서 분석에서 흔히 발생하는 단순 정성적 서술("양호", "적합") 문제를 극복하기 위해, Table 1에 제시된 원칙들을 시스템 프롬프트에 내재화하였다.</p>
+
+<!-- Table 1 -->
+<table>
+<thead>
+  <tr>
+    <th style="width:16%">원칙</th>
+    <th style="width:26%">항목</th>
+    <th>내용 및 예시</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td style="text-align:center;background:#EBF5FB;font-weight:bold;color:#1B3A6B">원칙&nbsp;1</td>
+    <td><b>측정값/<br>설계값<br>비율 계산</b></td>
+    <td>측정값과 설계값의 비율(%)을 명시하여 정량적 판단 근거 제시<br><span style="color:#666;font-size:7.8pt">예: "341.74 m³/h = 설계값 370 m³/h의 92.4%, ±10% 이내"</span></td>
+  </tr>
+  <tr>
+    <td style="text-align:center;background:#E9F7EF;font-weight:bold;color:#27AE60">원칙&nbsp;2</td>
+    <td><b>단위 환산<br>수행</b></td>
+    <td>상이한 단위 기재 시 환산 계산 과정 명시<br><span style="color:#666;font-size:7.8pt">예: "2.3 m/s × 0.45 m² × 3,600 = 3,726 m³/h"</span></td>
+  </tr>
+  <tr>
+    <td style="text-align:center;background:#FEF9E7;font-weight:bold;color:#F2994A">원칙&nbsp;3</td>
+    <td><b>운전 조건<br>확인</b></td>
+    <td>정격 운전 여부 및 실제 운전 상태 구분 기술<br><span style="color:#666;font-size:7.8pt">예: "정격 60Hz 미운전 상태 → 재측정 필요"</span></td>
+  </tr>
+  <tr>
+    <td style="text-align:center;background:#F5EEF8;font-weight:bold;color:#8E44AD">원칙&nbsp;4</td>
+    <td><b>정량적<br>판단 논리</b></td>
+    <td>"측정값 X, 설계값 Y, 비율 Z% → 기준 충족/미충족"의 구조적 서술 방식 적용</td>
+  </tr>
+  <tr>
+    <td style="text-align:center;background:#FDECED;font-weight:bold;color:#EB5757">원칙&nbsp;5</td>
+    <td><b>구체적<br>보완 방향</b></td>
+    <td>단순 "보완 필요" 대신 구체적 조치 방향 제시<br><span style="color:#666;font-size:7.8pt">예: "설계도서에서 설계값 확인 후 성능점검표에 기재"</span></td>
+  </tr>
+</tbody>
+</table>
+<div class="tbl-cap">Table 1&nbsp; AI 검토 5대 원칙</div>
+
+<p>또한, AI 응답이 토큰 한계로 인해 중단되는 경우에도 이미 추출된 항목을 보존하는 JSON 복원 알고리즘을 적용하였다. 본 알고리즘은 불완전한 JSON 응답에서 마지막으로 완전히 추출된 필드를 탐지하고, 유효한 JSON 구조로 복원하여 100% 항목 추출을 보장한다.</p>
+
+<h3>2.3 시스템 구현</h3>
+<p>본 시스템은 Python Streamlit 기반 웹 애플리케이션으로 구현되었으며, Google Gemini API를 통해 멀티모달 문서 분석을 수행한다. Fig. 2는 파일 업로드 및 AI 분석 결과 화면이다.</p>
+
+<div class="figure">
+  <div class="fig-ph" style="height:105px">[ Fig. 2: 파일 업로드 및 AI 분석 화면 삽입 ]</div>
+  <div class="fig-cap">Fig. 2&nbsp; 파일 업로드 및 분석 결과 화면</div>
+</div>
+
+<p>검토 결과는 세 개의 탭으로 구성된 화면에 표시된다. 기본정보 탭에서는 건축물명, 점검업체, 관리주체 정보 및 Google Maps 연동 위치를 확인할 수 있다. 적정 항목 탭에서는 [적정] 판정 항목을, 보완필요 항목 탭에서는 [보완필요] 판정 항목을 각각 정량적 검토의견과 함께 표시한다. Fig. 3은 검토의견 확인 화면이다.</p>
+
+<div class="figure">
+  <div class="fig-ph" style="height:105px">[ Fig. 3: 검토의견 확인 화면 (적정/보완필요 탭) 삽입 ]</div>
+  <div class="fig-cap">Fig. 3&nbsp; 검토의견 확인 화면</div>
+</div>
+
+<p>사용자는 각 항목을 선택하여 AI에게 재분석을 요청하는 인터랙티브 피드백 기능을 활용할 수 있다. 검토자는 필요한 항목에 대해 추가 지시를 입력하고 AI가 해당 항목의 검토의견을 재작성하는 환류 구조를 제공한다. 최종 검토 결과는 Excel 및 PowerPoint 형식으로 출력된다. Fig. 4는 출력된 검토자문 보고서 화면이다.</p>
+
+<div class="figure">
+  <div class="fig-ph" style="height:95px">[ Fig. 4: 검토자문 보고서 출력 화면 (PPTX) 삽입 ]</div>
+  <div class="fig-cap">Fig. 4&nbsp; 검토자문 보고서 출력 화면</div>
+</div>
+
+<h2>3. 결론</h2>
+<p>본 연구에서는 Google Gemini 멀티모달 AI를 활용하여 기계설비 성능점검 결과보고서를 자동 분석하고 정량적 검토의견을 생성하는 AI 기반 자동검토 시스템을 개발하였다. 개발된 시스템의 주요 성과는 다음과 같다.</p>
+<p>첫째, 멀티모달 AI 기술로 PDF 보고서와 계측 사진을 동시에 분석하여 기재값과 실측값의 교차검증이 가능하다. 둘째, 5대 정량적 검토 원칙을 시스템 프롬프트에 내재화하여 수치 기반의 일관성 있는 전문가 수준 검토의견을 생성한다. 셋째, JSON 복원 알고리즘으로 대용량 보고서 처리 시에도 100% 항목 추출을 보장한다.</p>
+<p>본 시스템은 전문 검토자문위원단의 사전 검토 지원 도구로서, 검토 시간을 수 분 이내로 단축하고 보고서 품질의 균질화에 기여할 것으로 기대된다. 후속 연구에서는 축적된 검토 데이터를 활용한 도메인 특화 AI 파인튜닝, 멀티에이전트 검토 체계 구축, 기계설비산업민원웹포털(MIS)과의 연계 강화 및 타 지방자치단체로의 확산 방안을 검토할 예정이다.</p>
+
+</div><!-- /right col -->
+
+<!-- ══════════════ 참고문헌 (전체 너비) ══════════════ -->
+<div class="full-width">
+  <div class="refs">
+    <strong>References</strong>
+    <p>1. 국토교통부, 「기계설비법」</p>
+    <p>2. 국토교통부, 「기계설비 유지관리기준」(국토교통부고시 제2021-1013호)</p>
+    <p>3. 국토교통부, 2022, 기계설비 성능점검 매뉴얼</p>
+    <p>4. 서울특별시, 2024, 서울형 기계설비 성능점검보고서 표준 매뉴얼</p>
+    <p>5. 국토교통부, 2025, 제2차 기계설비산업 발전 기본계획(2026~2030)</p>
+    <p>6. Google, 2024, Gemini API Documentation, Google DeepMind</p>
+    <p>7. 이창재, 양자강, 이영준, 2026, 기계설비 성능점검 검토자문 시스템 개발, 대한기계설비산업연구원 학술발표대회</p>
+  </div>
+</div>
+
+</div><!-- /body-columns -->
+</div><!-- /page -->
+</body>
+</html>

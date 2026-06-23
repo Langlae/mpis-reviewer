@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>기계설비 성능점검 검토자문 시스템 개발</title>
+<style>
+/* ── TOKENS ── */
+:root {
+  --navy:   #14305A;
+  --navy2:  #1A3D70;
+  --navy3:  #22508A;
+  --blue:   #1868C8;
+  --bluel:  rgba(24,104,200,.10);
+  --blued:  rgba(24,104,200,.22);
+  --green:  #007D5E;
+  --greenl: rgba(0,125,94,.10);
+  --orange: #D6501C;
+  --orangel:rgba(214,80,28,.09);
+  --purple: #6040B8;
+  --purplel:rgba(96,64,184,.09);
+  --text:   #1C2E40;
+  --text2:  #4A6070;
+  --text3:  #8A9DAC;
+  --bg:     #F4F7FB;
+  --bg2:    #FFFFFF;
+  --bg3:    #E8EFF7;
+  --border: rgba(20,48,90,.12);
+}
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#1A2A3C;
+  font-family:'Malgun Gothic','Apple SD Gothic Neo','Nanum Gothic',sans-serif;
+  color:var(--text)}
+
+#stage{position:absolute;width:1280px;height:720px;transform-origin:0 0}
+
+.slide{
+  position:absolute;inset:0;
+  background:var(--bg);
+  opacity:0;pointer-events:none;
+  transition:opacity .22s ease;
+  overflow:hidden;
+}
+.slide.on{opacity:1;pointer-events:auto}
+
+/* faint watermark number — subtle on light bg */
+.slide::after{
+  content:attr(data-n);
+  position:absolute;bottom:-20px;right:12px;
+  font-size:220px;font-weight:900;letter-spacing:-16px;
+  color:var(--navy);opacity:.04;line-height:1;pointer-events:none;
+}
+
+/* ── SHARED HEADER ── */
+.sh{
+  position:absolute;top:0;left:0;width:1280px;height:70px;
+  background:var(--navy);
+  display:flex;align-items:center;padding:0 48px;
+  box-shadow:0 2px 12px rgba(0,0,0,.18);
+}
+.sh-t{
+  flex:1;font-size:21px;font-weight:bold;color:#FFFFFF;
+  letter-spacing:-.3px;
+  border-left:4px solid rgba(255,255,255,.45);padding-left:14px;
+}
+.sh-n{font-size:11px;color:rgba(255,255,255,.38);letter-spacing:1.5px}
+
+/* horizontal rule under header */
+.sh-bar{
+  position:absolute;top:70px;left:0;width:1280px;height:3px;
+  background:linear-gradient(90deg,var(--blue) 0%,#34A8D8 55%,transparent 100%);
+}
+
+/* ── CONTENT AREA ── */
+.sc{position:absolute;top:80px;left:48px;right:48px;bottom:18px}
+
+/* ── CARD ── */
+.card{background:var(--bg2);border-radius:5px;border:1px solid var(--border);
+  box-shadow:0 1px 6px rgba(20,48,90,.06)}
+
+/* ── NAV ── */
+.nb{
+  position:fixed;top:50%;transform:translateY(-50%);
+  background:rgba(20,48,90,.55);
+  border:1px solid rgba(255,255,255,.14);
+  color:rgba(255,255,255,.55);
+  font-size:28px;width:44px;height:90px;
+  cursor:pointer;border-radius:4px;z-index:99;
+  transition:background .16s,color .16s;
+  display:flex;align-items:center;justify-content:center;
+}
+.nb:hover{background:rgba(24,104,200,.65);color:#fff}
+#nb-p{left:6px} #nb-n{right:6px}
+
+#dots{
+  position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+  display:flex;gap:9px;z-index:99;
+}
+.dot{width:8px;height:8px;border-radius:50%;cursor:pointer;
+  background:rgba(255,255,255,.25);transition:all .18s}
+.dot.on{background:#fff;transform:scale(1.25)}
+
+#sn{position:fixed;bottom:34px;left:50%;transform:translateX(-50%);
+  color:rgba(255,255,255,.25);font-size:10px;letter-spacing:1.5px;z-index:99}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 1 — 표지
+══════════════════════════════════════════════ -->
+<div class="slide on" data-n="01">
+  <!-- full-bleed navy top half -->
+  <div style="position:absolute;top:0;left:0;right:0;height:380px;background:var(--navy)">
+    <!-- subtle diagonal lines texture -->
+    <svg style="position:absolute;inset:0;width:100%;height:100%;opacity:.05"
+         xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="diag" width="28" height="28" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
+          <line x1="0" y1="0" x2="0" y2="28" stroke="#fff" stroke-width="1.2"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#diag)"/>
+    </svg>
+  </div>
+  <div style="position:absolute;top:0;left:0;right:0;bottom:0;
+    background:linear-gradient(180deg,transparent 320px,var(--bg) 380px)"></div>
+
+  <!-- KRIMFI logo area -->
+  <div style="position:absolute;top:28px;left:52px;
+    display:flex;align-items:center;gap:12px;">
+    <div style="width:42px;height:42px;background:rgba(255,255,255,.12);
+      border-radius:4px;border:1px solid rgba(255,255,255,.22);
+      display:flex;align-items:center;justify-content:center;">
+      <span style="font-size:20px">⚙</span>
+    </div>
+    <div>
+      <div style="font-size:12px;font-weight:bold;color:rgba(255,255,255,.9);letter-spacing:.5px">대한기계설비산업연구원</div>
+      <div style="font-size:9.5px;color:rgba(255,255,255,.45);letter-spacing:1px">KRIMFI</div>
+    </div>
+  </div>
+  <div style="position:absolute;top:32px;right:52px;
+    padding:6px 16px;border-radius:3px;
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);">
+    <span style="font-size:11px;color:rgba(255,255,255,.7)">2026년 학술발표대회</span>
+  </div>
+
+  <!-- blue accent bar -->
+  <div style="position:absolute;top:88px;left:52px;right:52px;
+    height:2px;background:linear-gradient(90deg,rgba(24,104,200,.8),rgba(52,168,216,.5),transparent)"></div>
+
+  <!-- title block -->
+  <div style="position:absolute;top:114px;left:52px;right:52px;text-align:center;">
+    <div style="font-size:44px;font-weight:bold;color:#FFFFFF;line-height:1.3;letter-spacing:-.5px;
+      text-shadow:0 2px 12px rgba(0,0,0,.3);">
+      기계설비 성능점검<br>검토자문 시스템 개발
+    </div>
+    <div style="font-size:15px;color:rgba(255,255,255,.6);margin-top:13px;line-height:1.5">
+      Development of a System for Reviewing and Advising<br>
+      on Mechanical Equipment Performance Inspections
+    </div>
+  </div>
+
+  <!-- divider -->
+  <div style="position:absolute;top:282px;left:50%;transform:translateX(-50%);
+    width:280px;height:1px;background:linear-gradient(90deg,transparent,rgba(24,104,200,.5),transparent)"></div>
+
+  <!-- author info card -->
+  <div style="position:absolute;top:410px;left:50%;transform:translateX(-50%);
+    width:580px;">
+    <div class="card" style="padding:22px 34px;text-align:center;">
+      <div style="font-size:15.5px;font-weight:bold;color:var(--text);margin-bottom:6px">
+        이창재<sup style="font-size:9px;color:var(--text3)">1</sup>&nbsp;&nbsp;
+        양자강<sup style="font-size:9px;color:var(--text3)">1</sup>&nbsp;&nbsp;
+        <b>이영준</b><sup style="font-size:9px;color:var(--text3)">2</sup>†
+      </div>
+      <div style="font-size:11.5px;color:var(--text2)">
+        <sup>1</sup>대한기계설비산업연구원 선임연구원&nbsp;&nbsp;
+        <sup>2</sup>대한기계설비산업연구원 연구위원
+      </div>
+    </div>
+  </div>
+
+  <!-- bottom label -->
+  <div style="position:absolute;bottom:20px;left:0;right:0;text-align:center;
+    font-size:10.5px;color:var(--text3);letter-spacing:.5px">
+    Key words: 기계설비 성능점검 &middot; 기계설비법 &middot; 검토자문시스템
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 2 — 목차
+══════════════════════════════════════════════ -->
+<div class="slide" data-n="02">
+  <div class="sh"><div class="sh-t">목  차</div><div class="sh-n">02 / 08</div></div>
+  <div class="sh-bar"></div>
+  <div class="sc" style="display:grid;grid-template-columns:1fr 1fr;
+    grid-template-rows:repeat(3,1fr);gap:13px 18px;">
+
+    <div class="card" style="display:flex;align-items:center;gap:0;overflow:hidden;">
+      <div style="width:64px;flex-shrink:0;background:var(--blue);
+        align-self:stretch;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:22px;font-weight:900;color:#fff">01</span>
+      </div>
+      <div style="padding:14px 18px;">
+        <div style="font-size:14.5px;font-weight:bold;color:var(--text);margin-bottom:3px">연구 배경 및 필요성</div>
+        <div style="font-size:11px;color:var(--text2)">기계설비 성능점검 제도 현황 및 문제점</div>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;align-items:center;gap:0;overflow:hidden;">
+      <div style="width:64px;flex-shrink:0;background:var(--bg3);
+        align-self:stretch;display:flex;align-items:center;justify-content:center;
+        border-right:3px solid var(--blue);">
+        <span style="font-size:22px;font-weight:900;color:var(--blue)">02</span>
+      </div>
+      <div style="padding:14px 18px;">
+        <div style="font-size:14.5px;font-weight:bold;color:var(--text);margin-bottom:3px">검토자문 프로세스 설계</div>
+        <div style="font-size:11px;color:var(--text2)">4개 주체 역할분담 및 다단계 검토 흐름</div>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;align-items:center;gap:0;overflow:hidden;">
+      <div style="width:64px;flex-shrink:0;background:var(--bg3);
+        align-self:stretch;display:flex;align-items:center;justify-content:center;
+        border-right:3px solid var(--blue);">
+        <span style="font-size:22px;font-weight:900;color:var(--blue)">03</span>
+      </div>
+      <div style="padding:14px 18px;">
+        <div style="font-size:14.5px;font-weight:bold;color:var(--text);margin-bottom:3px">시스템 구현</div>
+        <div style="font-size:11px;color:var(--text2)">웹 기반 플랫폼 주요 화면</div>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;align-items:center;gap:0;overflow:hidden;">
+      <div style="width:64px;flex-shrink:0;background:var(--bg3);
+        align-self:stretch;display:flex;align-items:center;justify-content:center;
+        border-right:3px solid var(--blue);">
+        <span style="font-size:22px;font-weight:900;color:var(--blue)">04</span>
+      </div>
+      <div style="padding:14px 18px;">
+        <div style="font-size:14.5px;font-weight:bold;color:var(--text);margin-bottom:3px">검토항목 구성</div>
+        <div style="font-size:11px;color:var(--text2)">보고서 적정성 평가 4대 항목</div>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;align-items:center;gap:0;overflow:hidden;">
+      <div style="width:64px;flex-shrink:0;background:var(--bg3);
+        align-self:stretch;display:flex;align-items:center;justify-content:center;
+        border-right:3px solid var(--blue);">
+        <span style="font-size:22px;font-weight:900;color:var(--blue)">05</span>
+      </div>
+      <div style="padding:14px 18px;">
+        <div style="font-size:14.5px;font-weight:bold;color:var(--text);margin-bottom:3px">기대효과 및 적용 현황</div>
+        <div style="font-size:11px;color:var(--text2)">도입 효과 및 서울시 공공건축물 시범 적용</div>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;align-items:center;gap:0;overflow:hidden;">
+      <div style="width:64px;flex-shrink:0;background:var(--bg3);
+        align-self:stretch;display:flex;align-items:center;justify-content:center;
+        border-right:3px solid var(--blue);">
+        <span style="font-size:22px;font-weight:900;color:var(--blue)">06</span>
+      </div>
+      <div style="padding:14px 18px;">
+        <div style="font-size:14.5px;font-weight:bold;color:var(--text);margin-bottom:3px">결론 및 향후 연구</div>
+        <div style="font-size:11px;color:var(--text2)">연구 성과 요약 및 후속 연구 계획</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 3 — 연구 배경 및 필요성
+══════════════════════════════════════════════ -->
+<div class="slide" data-n="03">
+  <div class="sh"><div class="sh-t">연구 배경 및 필요성</div><div class="sh-n">03 / 08</div></div>
+  <div class="sh-bar"></div>
+  <div class="sc" style="display:flex;flex-direction:column;gap:12px;">
+
+    <!-- law banner -->
+    <div style="flex-shrink:0;height:62px;
+      background:var(--navy);border-radius:5px;
+      display:flex;align-items:center;gap:14px;padding:0 20px;">
+      <div style="width:36px;height:36px;border-radius:50%;
+        background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.3);
+        flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:18px;color:#fff">⚖</span>
+      </div>
+      <div style="font-size:12.5px;color:rgba(255,255,255,.85);line-height:1.65;flex:1">
+        <b style="color:#fff">「기계설비법」 제17조</b>
+        &nbsp;→&nbsp; 일정 규모 이상 건축물 관리주체: <b style="color:#A8D0F8">매년 1회 이상 성능점검 의무</b>
+        &nbsp;|&nbsp; 2021년 8월 시행 &middot; 연면적 규모별 순차 확대 적용 중
+      </div>
+      <div style="flex-shrink:0;background:rgba(255,255,255,.08);
+        padding:5px 14px;border-radius:3px;border:1px solid rgba(255,255,255,.18);">
+        <span style="font-size:11px;color:rgba(255,255,255,.7)">2026년 현재 약 5년 시행</span>
+      </div>
+    </div>
+
+    <!-- 4 problem cards -->
+    <div style="flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div style="background:var(--orange);padding:14px 16px 12px;">
+          <div style="font-size:26px;color:rgba(255,255,255,.25);font-weight:900;line-height:1">①</div>
+          <div style="font-size:13.5px;font-weight:bold;color:#fff;margin-top:3px">보고서 품질 편차</div>
+        </div>
+        <div style="padding:13px 16px;flex:1;font-size:12px;color:var(--text2);line-height:1.85">
+          업체 간 기술역량 차이<br>
+          점검항목 해석 상이<br>
+          보고서 서식 비표준화<br>
+          내용 구성 불균일
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div style="background:var(--blue);padding:14px 16px 12px;">
+          <div style="font-size:26px;color:rgba(255,255,255,.25);font-weight:900;line-height:1">②</div>
+          <div style="font-size:13.5px;font-weight:bold;color:#fff;margin-top:3px">검토 역량 한계</div>
+        </div>
+        <div style="padding:13px 16px;flex:1;font-size:12px;color:var(--text2);line-height:1.85">
+          지자체 담당 공무원<br>
+          기술 전문성 부족<br>
+          행정적 여력 한계<br>
+          개별 검토 불가
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div style="background:var(--purple);padding:14px 16px 12px;">
+          <div style="font-size:26px;color:rgba(255,255,255,.25);font-weight:900;line-height:1">③</div>
+          <div style="font-size:13.5px;font-weight:bold;color:#fff;margin-top:3px">검토 수요 급증</div>
+        </div>
+        <div style="padding:13px 16px;flex:1;font-size:12px;color:var(--text2);line-height:1.85">
+          성능점검 대상 건축물<br>
+          지속 확대 시행<br>
+          연간 제출 보고서 수<br>
+          증가 추세
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div style="background:var(--green);padding:14px 16px 12px;">
+          <div style="font-size:26px;color:rgba(255,255,255,.25);font-weight:900;line-height:1">④</div>
+          <div style="font-size:13.5px;font-weight:bold;color:#fff;margin-top:3px">전문 검토 필요</div>
+        </div>
+        <div style="padding:13px 16px;flex:1;font-size:12px;color:var(--text2);line-height:1.85">
+          현장 실무자 및<br>
+          전문가 의견에서<br>
+          전문적 검토 과정의<br>
+          필요성 지속 제기
+        </div>
+      </div>
+    </div>
+
+    <!-- conclusion arrow -->
+    <div style="flex-shrink:0;height:56px;
+      background:var(--bluel);border:1.5px solid var(--blued);
+      border-radius:5px;
+      display:flex;align-items:center;gap:14px;padding:0 22px;">
+      <span style="font-size:20px;font-weight:bold;color:var(--blue)">→</span>
+      <span style="font-size:14px;font-weight:bold;color:var(--navy)">
+        성능점검 결과보고서의 품질 제고 및 지자체 담당 공무원의 보고서 적정성 판단 지원을 위한
+        <b style="color:var(--blue)">검토자문 시스템</b> 개발
+      </span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 4 — 검토자문 프로세스 설계
+══════════════════════════════════════════════ -->
+<div class="slide" data-n="04">
+  <div class="sh"><div class="sh-t">검토자문 프로세스 설계</div><div class="sh-n">04 / 08</div></div>
+  <div class="sh-bar"></div>
+  <div class="sc" style="display:flex;flex-direction:column;gap:10px;">
+
+    <div style="flex-shrink:0;font-size:12px;color:var(--text2)">
+      <b style="color:var(--navy)">4개 주체</b> 간 역할 분담 기반 다단계 검토 구조&nbsp;&mdash;&nbsp;
+      단일 검토자 판단 편향 방지 + 보고서 품질 체계적 확보
+    </div>
+
+    <!-- flowchart SVG -->
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+    <svg viewBox="0 0 1180 550" style="width:100%;height:100%"
+         font-family="'Malgun Gothic',sans-serif">
+
+      <!-- column headers -->
+      <rect x="0" y="0" width="255" height="46" rx="4" fill="#1C2E40"/>
+      <text x="127" y="27" fill="#fff" text-anchor="middle" font-size="15" font-weight="bold">관리주체</text>
+      <text x="127" y="42" fill="rgba(255,255,255,.5)" text-anchor="middle" font-size="10">Building Owner</text>
+
+      <rect x="275" y="0" width="255" height="46" rx="4" fill="#1868C8"/>
+      <text x="402" y="27" fill="#fff" text-anchor="middle" font-size="15" font-weight="bold">성능점검업자</text>
+      <text x="402" y="42" fill="rgba(255,255,255,.6)" text-anchor="middle" font-size="10">Inspection Contractor</text>
+
+      <rect x="550" y="0" width="255" height="46" rx="4" fill="#14305A"/>
+      <text x="677" y="27" fill="#fff" text-anchor="middle" font-size="15" font-weight="bold">연구원 (KRIMFI)</text>
+      <text x="677" y="42" fill="rgba(255,255,255,.5)" text-anchor="middle" font-size="10">Korea Research Institute of MFI</text>
+
+      <rect x="825" y="0" width="355" height="46" rx="4" fill="#6040B8"/>
+      <text x="1002" y="27" fill="#fff" text-anchor="middle" font-size="15" font-weight="bold">검토자문위원단</text>
+      <text x="1002" y="42" fill="rgba(255,255,255,.6)" text-anchor="middle" font-size="10">Review Advisory Committee</text>
+
+      <!-- column background strips -->
+      <rect x="0"   y="50" width="255" height="495" fill="rgba(28,46,64,.04)" rx="3"/>
+      <rect x="275" y="50" width="255" height="495" fill="rgba(24,104,200,.05)" rx="3"/>
+      <rect x="550" y="50" width="255" height="495" fill="rgba(20,48,90,.05)" rx="3"/>
+      <rect x="825" y="50" width="355" height="495" fill="rgba(96,64,184,.05)" rx="3"/>
+
+      <!-- boxes -->
+      <!-- C1: 발주 -->
+      <rect x="14" y="70" width="228" height="54" rx="4" fill="#fff" stroke="#D0D8E8" stroke-width="1"/>
+      <text x="128" y="95" fill="#1C2E40" text-anchor="middle" font-size="13" font-weight="bold">성능점검 발주</text>
+      <text x="128" y="113" fill="#5570A0" text-anchor="middle" font-size="10.5">Outsource Performance Inspection</text>
+
+      <!-- C2: 입찰·낙찰·계약 -->
+      <rect x="289" y="70" width="228" height="54" rx="4" fill="#fff" stroke="#D0D8E8" stroke-width="1"/>
+      <text x="403" y="95" fill="#1C2E40" text-anchor="middle" font-size="13" font-weight="bold">입찰·낙찰·계약</text>
+      <text x="403" y="113" fill="#5570A0" text-anchor="middle" font-size="10.5">Bidding &amp; Contract</text>
+
+      <!-- C2: 성능점검 수행 -->
+      <rect x="289" y="152" width="228" height="54" rx="4" fill="#fff" stroke="#D0D8E8" stroke-width="1"/>
+      <text x="403" y="177" fill="#1C2E40" text-anchor="middle" font-size="13" font-weight="bold">성능점검 수행</text>
+      <text x="403" y="195" fill="#5570A0" text-anchor="middle" font-size="10.5">Perform Performance Inspection</text>
+
+      <!-- C2: 결과보고서 작성 -->
+      <rect x="289" y="234" width="228" height="54" rx="4" fill="#fff" stroke="#D0D8E8" stroke-width="1"/>
+      <text x="403" y="259" fill="#1C2E40" text-anchor="middle" font-size="13" font-weight="bold">결과보고서 작성</text>
+      <text x="403" y="277" fill="#5570A0" text-anchor="middle" font-size="10.5">Inspection Report Preparation</text>
+
+      <!-- C3: 보고서 접수 -->
+      <rect x="564" y="234" width="228" height="54" rx="4" fill="#E8F0F8" stroke="#1868C8" stroke-width="1.5"/>
+      <text x="678" y="259" fill="#14305A" text-anchor="middle" font-size="13" font-weight="bold">보고서 접수</text>
+      <text x="678" y="277" fill="#1868C8" text-anchor="middle" font-size="10.5">Report Reception</text>
+
+      <!-- C4: 1차 검토 -->
+      <rect x="839" y="234" width="228" height="54" rx="4" fill="#F0EDF8" stroke="#6040B8" stroke-width="1.5"/>
+      <text x="953" y="259" fill="#3A2070" text-anchor="middle" font-size="13" font-weight="bold">1차 검토</text>
+      <text x="953" y="277" fill="#6040B8" text-anchor="middle" font-size="10.5">1st Review &amp; Write Opinion</text>
+
+      <!-- C3: 2차 검토 -->
+      <rect x="564" y="330" width="228" height="54" rx="4" fill="#E8F0F8" stroke="#1868C8" stroke-width="1.5"/>
+      <text x="678" y="355" fill="#14305A" text-anchor="middle" font-size="13" font-weight="bold">2차 검토</text>
+      <text x="678" y="373" fill="#1868C8" text-anchor="middle" font-size="10.5">2nd Review (Opinion Check)</text>
+
+      <!-- C2: 보완 회신 -->
+      <rect x="289" y="330" width="228" height="54" rx="4" fill="#fff" stroke="#D64A1A" stroke-width="1" stroke-dasharray="5,3"/>
+      <text x="403" y="355" fill="#D64A1A" text-anchor="middle" font-size="13" font-weight="bold">보완 회신</text>
+      <text x="403" y="373" fill="#D64A1A" text-anchor="middle" font-size="10.5">Revision Response</text>
+
+      <!-- C4: 최종 검토 -->
+      <rect x="839" y="330" width="228" height="54" rx="4" fill="#F0EDF8" stroke="#6040B8" stroke-width="1.5"/>
+      <text x="953" y="355" fill="#3A2070" text-anchor="middle" font-size="13" font-weight="bold">최종 검토 · 적합 판정</text>
+      <text x="953" y="373" fill="#6040B8" text-anchor="middle" font-size="10.5">Final Review &amp; Approved</text>
+
+      <!-- C3: 검토확인서 발급 -->
+      <rect x="564" y="424" width="228" height="54" rx="4" fill="#E8F8F0" stroke="#007D5E" stroke-width="2"/>
+      <text x="678" y="449" fill="#004D38" text-anchor="middle" font-size="13" font-weight="bold">검토확인서 발급</text>
+      <text x="678" y="467" fill="#007D5E" text-anchor="middle" font-size="10.5">Review Certificate Issued</text>
+
+      <!-- C2: 검토확인서 수령 -->
+      <rect x="289" y="424" width="228" height="54" rx="4" fill="#E8F8F0" stroke="#007D5E" stroke-width="1.5"/>
+      <text x="403" y="449" fill="#004D38" text-anchor="middle" font-size="13" font-weight="bold">검토확인서 수령</text>
+      <text x="403" y="467" fill="#007D5E" text-anchor="middle" font-size="10.5">Review Certificate Receipt</text>
+
+      <!-- C1: 보고서 및 확인서 수령 -->
+      <rect x="14" y="424" width="228" height="54" rx="4" fill="#E8F8F0" stroke="#007D5E" stroke-width="1.5"/>
+      <text x="128" y="449" fill="#004D38" text-anchor="middle" font-size="13" font-weight="bold">보고서·확인서 수령</text>
+      <text x="128" y="467" fill="#007D5E" text-anchor="middle" font-size="10.5">Receive Report &amp; Certificate</text>
+
+      <!-- C1: 지자체 제출 -->
+      <rect x="14" y="500" width="228" height="45" rx="4" fill="#14305A"/>
+      <text x="128" y="519" fill="#fff" text-anchor="middle" font-size="13" font-weight="bold">지자체(MIS) 제출</text>
+      <text x="128" y="537" fill="rgba(255,255,255,.55)" text-anchor="middle" font-size="10.5">Submit to Local Gov't (MIS)</text>
+
+      <!-- ── ARROWS ── -->
+      <!-- C1 발주 → C2 계약 -->
+      <path d="M242 97 L275 97" stroke="#1868C8" stroke-width="1.8" fill="none" marker-end="url(#arb)"/>
+      <!-- C2 계약 → 수행 -->
+      <path d="M403 124 L403 152" stroke="#888" stroke-width="1.5" fill="none" marker-end="url(#arg)"/>
+      <!-- C2 수행 → 작성 -->
+      <path d="M403 206 L403 234" stroke="#888" stroke-width="1.5" fill="none" marker-end="url(#arg)"/>
+      <!-- C2 작성 → C3 접수 -->
+      <path d="M517 261 L564 261" stroke="#1868C8" stroke-width="1.8" fill="none" marker-end="url(#arb)"/>
+      <!-- C3 접수 → C4 1차 -->
+      <path d="M792 261 L839 261" stroke="#6040B8" stroke-width="1.8" fill="none" marker-end="url(#arp)"/>
+      <!-- C4 1차 → C3 2차 -->
+      <path d="M953 288 L953 310 L800 310 L800 357 L792 357" stroke="#1868C8" stroke-width="1.5" fill="none" marker-end="url(#arb)"/>
+      <!-- C3 2차 → C2 보완요청 -->
+      <path d="M564 352 L517 352" stroke="#D64A1A" stroke-width="1.5" stroke-dasharray="5,3" fill="none" marker-end="url(#aro)"/>
+      <!-- C2 보완 → C3 재접수 (loop back) -->
+      <path d="M403 330 L403 310 L535 310 L535 261" stroke="#D64A1A" stroke-width="1.2" fill="none" stroke-dasharray="4,3" marker-end="url(#aro)"/>
+      <!-- C3 2차 → C4 최종 (승인요청) -->
+      <path d="M792 357 L839 357" stroke="#6040B8" stroke-width="1.8" fill="none" marker-end="url(#arp)"/>
+      <!-- C4 최종 → C3 발급 -->
+      <path d="M953 384 L953 406 L810 406 L810 451 L792 451" stroke="#007D5E" stroke-width="1.8" fill="none" marker-end="url(#arg2)"/>
+      <!-- C3 발급 → C2 수령 -->
+      <path d="M564 451 L517 451" stroke="#007D5E" stroke-width="1.8" fill="none" marker-end="url(#arg2)"/>
+      <!-- C2 수령 → C1 수령 -->
+      <path d="M289 451 L242 451" stroke="#007D5E" stroke-width="1.8" fill="none" marker-end="url(#arg2)"/>
+      <!-- C1 수령 → 지자체 제출 -->
+      <path d="M128 478 L128 500" stroke="#14305A" stroke-width="1.8" fill="none" marker-end="url(#arn)"/>
+
+      <!-- labels on arrows -->
+      <text x="540" y="255" fill="#1868C8" text-anchor="middle" font-size="9.5">보고서 접수</text>
+      <text x="810" y="255" fill="#6040B8" text-anchor="middle" font-size="9.5">1차 검토 요청</text>
+      <text x="540" y="346" fill="#D64A1A" text-anchor="middle" font-size="9.5">보완 요청</text>
+      <text x="810" y="351" fill="#6040B8" text-anchor="middle" font-size="9.5">승인 요청</text>
+      <text x="540" y="445" fill="#007D5E" text-anchor="middle" font-size="9.5">발급</text>
+
+      <!-- marker defs -->
+      <defs>
+        <marker id="arb" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#1868C8"/>
+        </marker>
+        <marker id="arg" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#888"/>
+        </marker>
+        <marker id="arp" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#6040B8"/>
+        </marker>
+        <marker id="aro" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#D64A1A"/>
+        </marker>
+        <marker id="arg2" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#007D5E"/>
+        </marker>
+        <marker id="arn" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#14305A"/>
+        </marker>
+      </defs>
+    </svg>
+    </div>
+
+    <!-- legend -->
+    <div style="flex-shrink:0;display:flex;gap:18px;justify-content:center;
+      font-size:11px;color:var(--text2);">
+      <span><span style="color:#888">───</span> 정상 흐름</span>
+      <span><span style="color:#1868C8">──▶</span> 접수·검토</span>
+      <span><span style="color:#6040B8">──▶</span> 검토위원회</span>
+      <span><span style="color:#D64A1A;letter-spacing:2px">- - ▶</span> 보완 요청·환류</span>
+      <span><span style="color:#007D5E">──▶</span> 합격·발급</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 5 — 시스템 구현
+══════════════════════════════════════════════ -->
+<div class="slide" data-n="05">
+  <div class="sh"><div class="sh-t">시스템 구현</div><div class="sh-n">05 / 08</div></div>
+  <div class="sh-bar"></div>
+  <div class="sc" style="display:flex;flex-direction:column;gap:11px;">
+
+    <!-- tech tags -->
+    <div style="flex-shrink:0;display:flex;gap:8px;align-items:center;">
+      <span style="font-size:12px;font-weight:bold;color:var(--blue);
+        background:var(--bluel);padding:3px 12px;border-radius:10px;border:1px solid var(--blued)">웹 기반 온라인 플랫폼</span>
+      <span style="font-size:12px;color:var(--green);
+        background:var(--greenl);padding:3px 12px;border-radius:10px;border:1px solid rgba(0,125,94,.2)">전 과정 통합 관리</span>
+      <span style="font-size:12px;color:var(--navy);
+        background:var(--bg3);padding:3px 12px;border-radius:10px;">실시간 진행 상태 확인</span>
+      <span style="font-size:12px;color:var(--purple);
+        background:var(--purplel);padding:3px 12px;border-radius:10px">이력 관리·투명성 확보</span>
+    </div>
+
+    <!-- 3 screenshot placeholders -->
+    <div style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div style="background:var(--navy);padding:10px 14px;">
+          <div style="font-size:9.5px;color:rgba(255,255,255,.5);margin-bottom:2px">Fig. 2</div>
+          <div style="font-size:13px;font-weight:bold;color:#fff">보고서 접수현황 화면</div>
+          <div style="font-size:10.5px;color:rgba(255,255,255,.55);margin-top:2px">Report management screen</div>
+        </div>
+        <div style="flex:1;border:1.5px dashed var(--blued);border-top:none;
+          background:#F8FAFD;
+          display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:14px;">
+          <span style="font-size:28px;opacity:.3">📋</span>
+          <span style="font-size:11.5px;color:var(--text3);text-align:center">[ 화면 캡처 삽입 ]</span>
+          <span style="font-size:10.5px;color:var(--text3);text-align:center">(보고서 목록·검토 진행 단계)</span>
+        </div>
+        <div style="padding:10px 14px;background:var(--bg3);font-size:11px;color:var(--text2);line-height:1.6">
+          건축물 정보 · 점검업체 · 접수일자<br>검토 단계: 접수 / 검토 중 / 보완요청 / 완료
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div style="background:var(--purple);padding:10px 14px;">
+          <div style="font-size:9.5px;color:rgba(255,255,255,.5);margin-bottom:2px">Fig. 3</div>
+          <div style="font-size:13px;font-weight:bold;color:#fff">검토의견서 작성 화면</div>
+          <div style="font-size:10.5px;color:rgba(255,255,255,.55);margin-top:2px">Review opinion form screen</div>
+        </div>
+        <div style="flex:1;border:1.5px dashed rgba(96,64,184,.28);border-top:none;
+          background:#FAF9FE;
+          display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:14px;">
+          <span style="font-size:28px;opacity:.3">✏️</span>
+          <span style="font-size:11.5px;color:var(--text3);text-align:center">[ 화면 캡처 삽입 ]</span>
+          <span style="font-size:10.5px;color:var(--text3);text-align:center">(검토자문위원 작성 화면)</span>
+        </div>
+        <div style="padding:10px 14px;background:var(--bg3);font-size:11px;color:var(--text2);line-height:1.6">
+          항목별 적정성 평가<br>구체적 검토의견 기술
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div style="background:#0D5C4A;padding:10px 14px;">
+          <div style="font-size:9.5px;color:rgba(255,255,255,.5);margin-bottom:2px">Fig. 4</div>
+          <div style="font-size:13px;font-weight:bold;color:#fff">의견작성 확인 화면 (연구원)</div>
+          <div style="font-size:10.5px;color:rgba(255,255,255,.55);margin-top:2px">Report opinion confirmation screen</div>
+        </div>
+        <div style="flex:1;border:1.5px dashed rgba(0,125,94,.28);border-top:none;
+          background:#F6FDFB;
+          display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:14px;">
+          <span style="font-size:28px;opacity:.3">✅</span>
+          <span style="font-size:11.5px;color:var(--text3);text-align:center">[ 화면 캡처 삽입 ]</span>
+          <span style="font-size:10.5px;color:var(--text3);text-align:center">(연구원 2차 확인 화면)</span>
+        </div>
+        <div style="padding:10px 14px;background:var(--bg3);font-size:11px;color:var(--text2);line-height:1.6">
+          1차 검토의견 일관성·객관성 확인<br>보완·조정 후 승인요청
+        </div>
+      </div>
+    </div>
+
+    <!-- platform desc -->
+    <div style="flex-shrink:0;border-radius:5px;overflow:hidden;border:1px solid var(--border);">
+      <div style="background:var(--navy);padding:8px 18px;
+        font-size:13px;font-weight:bold;color:#fff">플랫폼 특징</div>
+      <div style="background:var(--bg2);padding:10px 18px;
+        display:grid;grid-template-columns:repeat(3,1fr);gap:7px 20px;">
+        <div style="font-size:12px;color:var(--text2)"><span style="color:var(--blue)">▸</span>&nbsp; 성능점검업자 온라인 보고서 접수</div>
+        <div style="font-size:12px;color:var(--text2)"><span style="color:var(--blue)">▸</span>&nbsp; 검토 진행 단계 실시간 확인</div>
+        <div style="font-size:12px;color:var(--text2)"><span style="color:var(--blue)">▸</span>&nbsp; 보완 요청·재검토 환류 구조</div>
+        <div style="font-size:12px;color:var(--text2)"><span style="color:var(--blue)">▸</span>&nbsp; 검토자문위원 1차 검토의견 작성</div>
+        <div style="font-size:12px;color:var(--text2)"><span style="color:var(--blue)">▸</span>&nbsp; 연구원 2차 검토 · 최종 승인요청</div>
+        <div style="font-size:12px;color:var(--text2)"><span style="color:var(--blue)">▸</span>&nbsp; 검토확인서 자동 작성·발급</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 6 — 검토항목 구성
+══════════════════════════════════════════════ -->
+<div class="slide" data-n="06">
+  <div class="sh"><div class="sh-t">검토항목 구성</div><div class="sh-n">06 / 08</div></div>
+  <div class="sh-bar"></div>
+  <div class="sc" style="display:flex;flex-direction:column;gap:13px;">
+
+    <div style="font-size:12.5px;color:var(--text2)">
+      검토자문위원은 성능점검 결과보고서의
+      <b style="color:var(--navy)">항목별 적정성을 평가</b>하고 구체적인 검토의견을 기술 —
+      4개 주요 검토 카테고리로 구성
+    </div>
+
+    <!-- 4 review item cards (tall) -->
+    <div style="flex:1;display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:1fr 1fr;gap:13px;">
+
+      <!-- Item 1 -->
+      <div class="card" style="display:flex;gap:0;overflow:hidden;">
+        <div style="width:10px;background:var(--blue);flex-shrink:0"></div>
+        <div style="padding:16px 20px;flex:1">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--bluel);
+              border:2px solid var(--blued);flex-shrink:0;
+              display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:16px;font-weight:900;color:var(--blue)">1</span>
+            </div>
+            <div style="font-size:15px;font-weight:bold;color:var(--text)">점검대상 기계설비 현황의 정확성</div>
+          </div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.8;">
+            ●&nbsp; 설치된 기계설비의 종류·규모·수량의 정확한 기재 여부<br>
+            ●&nbsp; 설비 제원 및 용량 정보의 설계도서 일치 여부<br>
+            ●&nbsp; 점검 대상 범위의 적정성
+          </div>
+        </div>
+      </div>
+
+      <!-- Item 2 -->
+      <div class="card" style="display:flex;gap:0;overflow:hidden;">
+        <div style="width:10px;background:var(--purple);flex-shrink:0"></div>
+        <div style="padding:16px 20px;flex:1">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--purplel);
+              border:2px solid rgba(96,64,184,.22);flex-shrink:0;
+              display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:16px;font-weight:900;color:var(--purple)">2</span>
+            </div>
+            <div style="font-size:15px;font-weight:bold;color:var(--text)">성능점검표 기재 내용의 충실도</div>
+          </div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.8;">
+            ●&nbsp; 점검항목 전체에 대한 빠짐없는 기재 여부<br>
+            ●&nbsp; 점검 결과 수치의 구체적 기록 여부<br>
+            ●&nbsp; 측정 조건 및 방법의 명시 여부
+          </div>
+        </div>
+      </div>
+
+      <!-- Item 3 -->
+      <div class="card" style="display:flex;gap:0;overflow:hidden;">
+        <div style="width:10px;background:var(--orange);flex-shrink:0"></div>
+        <div style="padding:16px 20px;flex:1">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--orangel);
+              border:2px solid rgba(214,80,28,.22);flex-shrink:0;
+              display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:16px;font-weight:900;color:var(--orange)">3</span>
+            </div>
+            <div style="font-size:15px;font-weight:bold;color:var(--text)">설계값 대비 측정값의 적정 범위 여부</div>
+          </div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.8;">
+            ●&nbsp; 설계값 대비 측정값 비율의 허용 범위 내 여부<br>
+            ●&nbsp; 측정 기준 단위 및 환산의 적정성<br>
+            ●&nbsp; 기준 초과 항목의 원인 분석 기재 여부
+          </div>
+        </div>
+      </div>
+
+      <!-- Item 4 -->
+      <div class="card" style="display:flex;gap:0;overflow:hidden;">
+        <div style="width:10px;background:var(--green);flex-shrink:0"></div>
+        <div style="padding:16px 20px;flex:1">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--greenl);
+              border:2px solid rgba(0,125,94,.22);flex-shrink:0;
+              display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:16px;font-weight:900;color:var(--green)">4</span>
+            </div>
+            <div style="font-size:15px;font-weight:bold;color:var(--text)">성능개선계획의 타당성</div>
+          </div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.8;">
+            ●&nbsp; 불합격 항목에 대한 개선계획 수립 여부<br>
+            ●&nbsp; 개선 방법·일정·담당자의 명확한 기재<br>
+            ●&nbsp; 개선 조치의 기술적 타당성
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- outcome -->
+    <div style="flex-shrink:0;display:flex;gap:12px;height:54px;">
+      <div style="flex:1;background:var(--greenl);border:1px solid rgba(0,125,94,.22);
+        border-radius:5px;display:flex;align-items:center;gap:12px;padding:0 18px;">
+        <span style="font-size:20px;font-weight:900;color:var(--green)">✓</span>
+        <span style="font-size:13px;font-weight:bold;color:var(--green)">합격</span>
+        <span style="font-size:12px;color:var(--text2)">→ 검토확인서 발급 → 지자체 제출</span>
+      </div>
+      <div style="flex:1;background:var(--orangel);border:1px solid rgba(214,80,28,.22);
+        border-radius:5px;display:flex;align-items:center;gap:12px;padding:0 18px;">
+        <span style="font-size:20px;font-weight:900;color:var(--orange)">⚠</span>
+        <span style="font-size:13px;font-weight:bold;color:var(--orange)">보완 요청</span>
+        <span style="font-size:12px;color:var(--text2)">→ 성능점검업자 보완 회신 → 재검토</span>
+      </div>
+      <div style="flex:1;background:rgba(214,80,28,.06);border:1px solid rgba(214,80,28,.15);
+        border-radius:5px;display:flex;align-items:center;gap:12px;padding:0 18px;">
+        <span style="font-size:20px;font-weight:900;color:var(--orange)">✗</span>
+        <span style="font-size:13px;font-weight:bold;color:var(--orange)">반려</span>
+        <span style="font-size:12px;color:var(--text2)">→ 반려 사유 통보</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 7 — 기대효과 및 적용 현황
+══════════════════════════════════════════════ -->
+<div class="slide" data-n="07">
+  <div class="sh"><div class="sh-t">기대효과 및 적용 현황</div><div class="sh-n">07 / 08</div></div>
+  <div class="sh-bar"></div>
+  <div class="sc" style="display:flex;flex-direction:column;gap:12px;">
+
+    <!-- 3 effect cards -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;height:230px;flex-shrink:0;">
+
+      <div class="card" style="overflow:hidden;display:flex;flex-direction:column;">
+        <div style="background:var(--navy);padding:14px 18px;">
+          <div style="font-size:10px;color:rgba(255,255,255,.45);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">효과 1</div>
+          <div style="font-size:16px;font-weight:bold;color:#fff">보고서 품질 균질화</div>
+        </div>
+        <div style="padding:14px 18px;flex:1;font-size:12.5px;color:var(--text2);line-height:1.8;">
+          전문 검토자문위원단에 의한<br>
+          <b style="color:var(--navy)">다단계 검토 체계</b> 적용<br><br>
+          → 성능점검 결과보고서의<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;품질 수준 균질화
+        </div>
+      </div>
+
+      <div class="card" style="overflow:hidden;display:flex;flex-direction:column;">
+        <div style="background:var(--blue);padding:14px 18px;">
+          <div style="font-size:10px;color:rgba(255,255,255,.45);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">효과 2</div>
+          <div style="font-size:16px;font-weight:bold;color:#fff">행정 효율성 향상</div>
+        </div>
+        <div style="padding:14px 18px;flex:1;font-size:12.5px;color:var(--text2);line-height:1.8;">
+          지자체 공무원은<br>
+          <b style="color:var(--blue)">검토확인서 기반</b>으로<br>
+          보고서 적정 여부 신속 판단<br><br>
+          → 행정 처리 시간 단축
+        </div>
+      </div>
+
+      <div class="card" style="overflow:hidden;display:flex;flex-direction:column;">
+        <div style="background:var(--green);padding:14px 18px;">
+          <div style="font-size:10px;color:rgba(255,255,255,.45);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">효과 3</div>
+          <div style="font-size:16px;font-weight:bold;color:#fff">업체 역량 점진적 개선</div>
+        </div>
+        <div style="padding:14px 18px;flex:1;font-size:12.5px;color:var(--text2);line-height:1.8;">
+          보완 요청 및 재검토<br>
+          <b style="color:var(--green)">환류 구조</b>를 통해<br>
+          성능점검업체의 보고서<br>작성 역량 점진적 개선
+        </div>
+      </div>
+    </div>
+
+    <!-- application status -->
+    <div class="card" style="flex-shrink:0;overflow:hidden;">
+      <div style="background:var(--bg3);padding:10px 20px;border-bottom:2px solid var(--blue);">
+        <div style="font-size:14px;font-weight:bold;color:var(--navy)">시스템 적용 현황</div>
+      </div>
+      <div style="padding:14px 20px;display:flex;align-items:center;gap:16px;">
+        <!-- timeline -->
+        <div style="flex:1;display:flex;align-items:center;gap:0;">
+
+          <div style="text-align:center;flex:1;">
+            <div style="width:42px;height:42px;border-radius:50%;background:var(--bg3);
+              border:2px solid var(--navy3);margin:0 auto 6px;
+              display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:18px">⚖</span>
+            </div>
+            <div style="font-size:10.5px;font-weight:bold;color:var(--navy)">2021.08</div>
+            <div style="font-size:10px;color:var(--text2)">기계설비법 시행</div>
+          </div>
+          <div style="height:2px;flex:1;background:linear-gradient(90deg,var(--navy3),var(--blue));margin-bottom:22px"></div>
+
+          <div style="text-align:center;flex:1;">
+            <div style="width:42px;height:42px;border-radius:50%;background:var(--bluel);
+              border:2px solid var(--blue);margin:0 auto 6px;
+              display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:18px">🔧</span>
+            </div>
+            <div style="font-size:10.5px;font-weight:bold;color:var(--blue)">2025~</div>
+            <div style="font-size:10px;color:var(--text2)">시스템 개발</div>
+          </div>
+          <div style="height:2px;flex:1;background:linear-gradient(90deg,var(--blue),var(--green));margin-bottom:22px"></div>
+
+          <div style="text-align:center;flex:1;">
+            <div style="width:48px;height:48px;border-radius:50%;background:var(--greenl);
+              border:3px solid var(--green);margin:0 auto 6px;
+              display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:20px">✅</span>
+            </div>
+            <div style="font-size:10.5px;font-weight:bold;color:var(--green)">2026.04~</div>
+            <div style="font-size:10px;color:var(--text2)">서울시 공공건축물 적용</div>
+          </div>
+          <div style="height:2px;flex:1;background:linear-gradient(90deg,var(--green),rgba(96,64,184,.4));margin-bottom:22px;border-top:1px dashed rgba(96,64,184,.3)"></div>
+
+          <div style="text-align:center;flex:1;">
+            <div style="width:42px;height:42px;border-radius:50%;background:var(--purplel);
+              border:2px dashed var(--purple);margin:0 auto 6px;
+              display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:18px">🏢</span>
+            </div>
+            <div style="font-size:10.5px;font-weight:bold;color:var(--purple)">향후 계획</div>
+            <div style="font-size:10px;color:var(--text2)">민간 건축물 확대</div>
+          </div>
+          <div style="height:2px;flex:1;background:linear-gradient(90deg,rgba(96,64,184,.3),rgba(20,48,90,.2));margin-bottom:22px;border-top:1px dashed rgba(20,48,90,.2)"></div>
+
+          <div style="text-align:center;flex:1;">
+            <div style="width:42px;height:42px;border-radius:50%;background:rgba(20,48,90,.08);
+              border:2px dashed var(--navy3);margin:0 auto 6px;
+              display:flex;align-items:center;justify-content:center;">
+              <span style="font-size:18px">🤖</span>
+            </div>
+            <div style="font-size:10.5px;font-weight:bold;color:var(--navy2)">후속 연구</div>
+            <div style="font-size:10px;color:var(--text2)">AI 사전검토 도입</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- current status highlight -->
+    <div style="flex-shrink:0;height:54px;background:var(--greenl);
+      border:1.5px solid rgba(0,125,94,.22);border-radius:5px;
+      display:flex;align-items:center;gap:14px;padding:0 22px;">
+      <span style="font-size:20px">📍</span>
+      <span style="font-size:14px;color:var(--navy)">
+        <b style="color:var(--green)">현재 적용 중</b>: 2026년 4월부터 서울특별시 공공건축물을 대상으로 우선 적용
+        &nbsp;&mdash;&nbsp; 향후 민간 건축물로 확대 예정
+      </span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     SLIDE 8 — 결론 및 향후 연구
+══════════════════════════════════════════════ -->
+<div class="slide" data-n="08">
+  <div class="sh"><div class="sh-t">결론 및 향후 연구</div><div class="sh-n">08 / 08</div></div>
+  <div class="sh-bar"></div>
+  <div class="sc" style="display:flex;flex-direction:column;gap:12px;">
+
+    <!-- conclusion summary -->
+    <div class="card" style="flex-shrink:0;padding:16px 22px;border-left:5px solid var(--navy);">
+      <div style="font-size:13px;font-weight:bold;color:var(--navy);margin-bottom:8px">연구 결론</div>
+      <div style="font-size:12.5px;color:var(--text2);line-height:1.9;">
+        성능점검 결과보고서의 <b style="color:var(--navy)">품질 편차 문제</b>와 지방자치단체 담당 공무원의 <b style="color:var(--navy)">검토 역량 한계</b>를 해소하기 위해
+        '기계설비 성능점검 검토자문 시스템'을 개발하였다. 성능점검업자의 <b style="color:var(--blue)">보고서 온라인 접수</b>,
+        검토자문위원단의 <b style="color:var(--purple)">1차 검토</b>, 연구원의 <b style="color:var(--blue)">2차 검토</b>, <b style="color:var(--green)">최종 판정 및 검토확인서 발급</b>에 이르는
+        전 과정을 웹 기반 플랫폼으로 통합 구현하여 <b style="color:var(--navy)">검토자문 절차의 체계화</b>와 <b style="color:var(--navy)">이력관리의 투명성</b>을 확보하였다.
+      </div>
+    </div>
+
+    <!-- 3 achievement cards -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;height:186px;flex-shrink:0;">
+      <div class="card" style="padding:16px;border-top:3px solid var(--navy);">
+        <div style="font-size:13.5px;font-weight:bold;color:var(--navy);margin-bottom:8px">✓ 절차 체계화</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.75;">
+          접수 → 1차 검토 → 2차 검토<br>→ 최종 판정 → 확인서 발급<br>
+          전 과정 단일 플랫폼 통합
+        </div>
+      </div>
+      <div class="card" style="padding:16px;border-top:3px solid var(--blue);">
+        <div style="font-size:13.5px;font-weight:bold;color:var(--blue);margin-bottom:8px">✓ 전문성 확보</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.75;">
+          기술사·박사급 전문 검토자문<br>위원단 참여로 보고서 적정성<br>
+          전문적 판단 가능
+        </div>
+      </div>
+      <div class="card" style="padding:16px;border-top:3px solid var(--green);">
+        <div style="font-size:13.5px;font-weight:bold;color:var(--green);margin-bottom:8px">✓ 행정 지원</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.75;">
+          검토확인서 기반 지자체<br>행정 판단 지원<br>
+          이력관리 투명성 확보
+        </div>
+      </div>
+    </div>
+
+    <!-- future research -->
+    <div class="card" style="flex-shrink:0;overflow:hidden;">
+      <div style="background:var(--bg3);padding:9px 18px;border-bottom:2px solid var(--blue);">
+        <div style="font-size:13px;font-weight:bold;color:var(--navy)">향후 연구 계획</div>
+      </div>
+      <div style="padding:11px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <div style="display:flex;gap:9px;align-items:flex-start;">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--bluel);
+            border:2px solid var(--blued);flex-shrink:0;margin-top:1px;
+            display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:14px;color:var(--blue)">🤖</span>
+          </div>
+          <div>
+            <div style="font-size:12.5px;font-weight:bold;color:var(--blue);margin-bottom:3px">AI 기반 사전검토</div>
+            <div style="font-size:11.5px;color:var(--text2);line-height:1.6">축적된 검토 데이터를 활용한<br>AI 기반 사전검토 기능 도입</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:9px;align-items:flex-start;">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--greenl);
+            border:2px solid rgba(0,125,94,.22);flex-shrink:0;margin-top:1px;
+            display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:14px;color:var(--green)">🔗</span>
+          </div>
+          <div>
+            <div style="font-size:12.5px;font-weight:bold;color:var(--green);margin-bottom:3px">MIS 연계 강화</div>
+            <div style="font-size:11.5px;color:var(--text2);line-height:1.6">기계설비산업민원웹포털(MIS)<br>연계 강화</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:9px;align-items:flex-start;">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--purplel);
+            border:2px solid rgba(96,64,184,.22);flex-shrink:0;margin-top:1px;
+            display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:14px;color:var(--purple)">🗺</span>
+          </div>
+          <div>
+            <div style="font-size:12.5px;font-weight:bold;color:var(--purple);margin-bottom:3px">타 지자체 확산</div>
+            <div style="font-size:11.5px;color:var(--text2);line-height:1.6">서울 이외 지방자치단체로의<br>확산 방안 검토</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- thank you -->
+    <div style="flex-shrink:0;background:var(--navy);border-radius:5px;
+      padding:14px 0;text-align:center;">
+      <div style="font-size:21px;font-weight:bold;color:#FFFFFF">감사합니다</div>
+      <div style="font-size:10.5px;color:rgba(255,255,255,.45);margin-top:4px">
+        본 연구는 대한기계설비산업연구원의 지원으로 수행되었습니다.
+        &nbsp;|&nbsp; Corresponding author: leeyj@krimfi.re.kr
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /stage -->
+
+<button class="nb" id="nb-p">&#8249;</button>
+<button class="nb" id="nb-n">&#8250;</button>
+<div id="dots"></div>
+<div id="sn">1 / 8</div>
+
+<script>
+(function(){
+  const slides = document.querySelectorAll('.slide');
+  const dotsEl = document.getElementById('dots');
+  const snEl   = document.getElementById('sn');
+  let cur = 0;
+
+  slides.forEach((_,i)=>{
+    const d=document.createElement('div');
+    d.className='dot'+(i===0?' on':'');
+    d.addEventListener('click',()=>go(i));
+    dotsEl.appendChild(d);
+  });
+
+  function go(n){
+    if(n<0||n>=slides.length)return;
+    slides[cur].classList.remove('on');
+    dotsEl.children[cur].classList.remove('on');
+    cur=n;
+    slides[cur].classList.add('on');
+    dotsEl.children[cur].classList.add('on');
+    snEl.textContent=(cur+1)+' / '+slides.length;
+  }
+
+  document.getElementById('nb-p').addEventListener('click',()=>go(cur-1));
+  document.getElementById('nb-n').addEventListener('click',()=>go(cur+1));
+
+  document.addEventListener('keydown',e=>{
+    if(['ArrowRight','ArrowDown',' '].includes(e.key)){e.preventDefault();go(cur+1);}
+    if(['ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();go(cur-1);}
+  });
+
+  let tx=0;
+  document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+  document.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-tx;
+    if(Math.abs(dx)>44)go(cur+(dx<0?1:-1));
+  });
+
+  const stage=document.getElementById('stage');
+  function scale(){
+    const s=Math.min(window.innerWidth/1280,window.innerHeight/720)*0.97;
+    stage.style.transform=`scale(${s})`;
+    stage.style.left=((window.innerWidth-1280*s)/2)+'px';
+    stage.style.top=((window.innerHeight-720*s)/2)+'px';
+  }
+  window.addEventListener('resize',scale);
+  scale();
+})();
+</script>
+</body>
+</html>
