@@ -151,7 +151,7 @@ else:
                 st.info(f"📄 PDF 문서: {pdfs[0].name}")
             for img_file in imgs:
                 img_file.seek(0)
-                st.image(Image.open(img_file), caption=img_file.name, use_column_width=True)
+                st.image(Image.open(img_file), caption=img_file.name, use_container_width=True)
 
         with col2:
             st.subheader("🤖 검토자문 의견 생성")
@@ -243,10 +243,13 @@ else:
                             temp_pdf_path = "temp_report.pdf"
                             with open(temp_pdf_path, "wb") as f:
                                 f.write(pdfs[0].read())
-                            uploaded_pdf = genai.upload_file(temp_pdf_path)
+                            # SDK 버전에 따라 upload_file 위치가 다름
+                            _upload = getattr(genai, "upload_file", None) or getattr(genai.files, "upload", None)
+                            uploaded_pdf = _upload(temp_pdf_path)
+                            _get = getattr(genai, "get_file", None) or getattr(genai.files, "get", None)
                             while uploaded_pdf.state.name == "PROCESSING":
                                 time.sleep(2)
-                                uploaded_pdf = genai.get_file(uploaded_pdf.name)
+                                uploaded_pdf = _get(uploaded_pdf.name)
                             contents_to_send.append(uploaded_pdf)
 
                         if imgs:
@@ -257,7 +260,11 @@ else:
                         response = model.generate_content(contents_to_send)
 
                         if pdfs:
-                            genai.delete_file(uploaded_pdf.name)
+                            _delete = getattr(genai, "delete_file", None) or getattr(genai.files, "delete", None)
+                            try:
+                                _delete(uploaded_pdf.name)
+                            except Exception:
+                                pass
                             if os.path.exists(temp_pdf_path):
                                 os.remove(temp_pdf_path)
 
